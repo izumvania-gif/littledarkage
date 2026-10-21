@@ -20,6 +20,7 @@ import { RedGlasses } from './render/redGlasses.ts';
 import { createStage, type Stage } from './render/stage.ts';
 import { LINEUP_HOLES } from './render/tears.ts';
 import { CaptionPlate, type Cue } from './ui/caption.ts';
+import { battleRange, isBattleId } from './stages/battle/range.ts';
 import { debugPanel } from './ui/debug.ts';
 import { wait } from './ui/dom.ts';
 import { isPhone, showDesktopOnly, showIntro } from './ui/intro.ts';
@@ -154,6 +155,17 @@ async function main(): Promise<void> {
 
   const audio = new AudioEngine();
   const [stage] = await Promise.all([createStage(host), fontsReady()]);
+
+  // The firing range: one battle outside the story (?battle=training|b1|b2|b3).
+  const range = params.get('battle');
+  if (isBattleId(range)) {
+    settings = await showIntro(ui, settings, false);
+    saveSettings(store, settings);
+    audio.unlock(settings.output);
+    await battleRange(stage, ui, audio, settings, reduced, range, params);
+    return;
+  }
+
   const scene = buildLineup();
   const glasses = new RedGlasses(stage.app.renderer, scene.truth, scene.poster, LINEUP_HOLES, stage.app.renderer.resolution);
   stage.root.addChild(glasses.view);

@@ -7,6 +7,8 @@ import type { Output } from '../core/settings.ts';
 
 const dbToGain = (db: number) => Math.pow(10, db / 20);
 
+export type Bus = 'sfx' | 'ui' | 'ambience';
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
@@ -14,9 +16,29 @@ export class AudioEngine {
   private ui!: GainNode;
   private ambience!: GainNode;
   private white!: AudioBuffer;
+  private mode: Output = 'headphones';
 
   get running(): boolean {
     return this.ctx?.state === 'running';
+  }
+
+  /** The running context, for the battle's spatial sounds (engine/spatial.ts); null before the first click. */
+  get context(): AudioContext | null {
+    return this.ctx?.state === 'running' ? this.ctx : null;
+  }
+
+  get output(): Output {
+    return this.mode;
+  }
+
+  bus(name: Bus): AudioNode | null {
+    if (!this.ctx) return null;
+    return name === 'sfx' ? this.sfx : name === 'ui' ? this.ui : this.ambience;
+  }
+
+  /** White noise shared by the synthesized sounds. */
+  get noiseBuffer(): AudioBuffer | null {
+    return this.ctx ? this.white : null;
   }
 
   /** Call from a click or key handler. */
@@ -53,6 +75,7 @@ export class AudioEngine {
 
   /** Mono folds everything down to one channel for one-ear or mono playback. */
   setOutput(output: Output): void {
+    this.mode = output;
     if (!this.ctx) return;
     const d = this.ctx.destination;
     d.channelCountMode = 'explicit';

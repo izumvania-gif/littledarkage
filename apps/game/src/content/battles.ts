@@ -40,6 +40,8 @@ export interface BattleDef {
   partner: string;
   /** The player goes out alone after his partner falls (battle 3). */
   solo?: boolean;
+  /** Where in the game, 0..1, for «Красные очки»: in battle the poster tears sooner than in the barracks. */
+  t: number;
   setup: Omit<BattleSetup, 'seed'>;
 }
 
@@ -58,6 +60,7 @@ export const BATTLES: Readonly<Record<BattleId, BattleDef>> = {
   /** The prologue's workshop: a few training moves with Норкин, three weak creatures, nothing hidden. */
   training: {
     id: 'training',
+    t: 0.08,
     title: 'Учебная тревога',
     role: 'coordinator',
     partner: 'norkin',
@@ -74,6 +77,7 @@ export const BATTLES: Readonly<Record<BattleId, BattleDef>> = {
   /** Cycle 1 «Слух»: the player coordinates. Сырков falls by the script; named soldiers live to their scenes. */
   b1: {
     id: 'b1',
+    t: 0.32,
     title: 'Бой 1',
     role: 'coordinator',
     partner: 'norkin',
@@ -93,6 +97,7 @@ export const BATTLES: Readonly<Record<BattleId, BattleDef>> = {
   /** Cycle 2 «Улики»: the player is blind, Норкин is his voice; the first turn is a training one, no creatures. */
   b2: {
     id: 'b2',
+    t: 0.58,
     title: 'Бой 2',
     role: 'striker',
     partner: 'norkin',
@@ -112,6 +117,7 @@ export const BATTLES: Readonly<Record<BattleId, BattleDef>> = {
    */
   b3: {
     id: 'b3',
+    t: 0.82,
     title: 'Бой 3',
     role: 'coordinator',
     partner: 'norkin',

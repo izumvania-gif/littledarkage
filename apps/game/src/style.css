@@ -344,6 +344,15 @@ button {
   min-height: 1.5em;
 }
 
+a.primary {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.range-links a {
+  color: var(--cream);
+}
+
 /* ---------- debug ---------- */
 
 .debug {
