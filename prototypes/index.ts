@@ -30,7 +30,13 @@ clear.addEventListener('click', () => {
 
 root.append(
   h('h1', { text: 'Прототипы вехи 1' }),
-  h('p', { class: 'lead', text: 'Одноразовые прототипы «Короткого тёмного века». Тестеру давайте прямую ссылку и ничего не объясняйте. Критерии «оставить или выбросить» и порядок проверки — в prototypes/README.md.' }),
+  h(
+    'p',
+    { class: 'lead' },
+    'Одноразовые прототипы «Короткого тёмного века». Тестеру давайте прямую ссылку и ничего не объясняйте. Критерии «оставить или выбросить» и порядок проверки — ',
+    h('a', { text: 'в README прототипов', attrs: { href: 'https://github.com/izumvania-gif/littledarkage/blob/main/prototypes/README.md', style: 'color: inherit' } }),
+    '.',
+  ),
   h(
     'ol',
     { class: 'protos' },
