@@ -4,22 +4,13 @@
  * commit() after every endTurn: a battle is saved turn by turn and can't be rewound.
  */
 import type { Battle } from '../../core/battle.ts';
+import type { BattleMemory } from '../../core/save.ts';
 import type { Settings } from '../../core/settings.ts';
 import type { BattleDef } from '../../content/battles.ts';
 import type { AudioEngine } from '../../engine/audio.ts';
 import type { Stage } from '../../render/stage.ts';
 
-/** What a battle carries besides the field; saved with it. */
-export interface BattleMemory {
-  /** The partner's trust in the player, 0..3 (from the barracks; the battle moves it). */
-  trust: number;
-  /** The partner was hit or cried out last turn, so his quirks are on (visible to the player). */
-  partnerScared: boolean;
-  /** The player (as striker) was hit last turn: their coordinator is scared too. */
-  playerScared: boolean;
-  /** Counters for the register and the stats: crushed, secrets, caught, accepted, followed, ignored… */
-  stats: Record<string, number>;
-}
+export type { BattleMemory } from '../../core/save.ts';
 
 export interface BattleContext {
   stage: Stage;

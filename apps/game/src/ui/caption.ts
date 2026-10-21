@@ -177,7 +177,7 @@ export class CaptionPlate {
    * The end of milestone 0. «Начать с построения» crosses this soldier out; it asks once more before doing it.
    * Resolves when the player confirmed the restart.
    */
-  end(text: string, warning: string): Promise<void> {
+  end(text: string, warning: string, extra?: HTMLElement): Promise<void> {
     return new Promise((resolve) => {
       const restart = h('button', { class: 'secondary', text: 'Начать с построения', attrs: { type: 'button' } });
       const note = h('p', { class: 'end-note', attrs: { 'aria-live': 'polite' } });
@@ -191,6 +191,7 @@ export class CaptionPlate {
         note.textContent = warning;
       });
       this.body.append(h('div', { class: 'end-row' }, h('p', { class: 'end-text', text }), restart), note);
+      if (extra) this.body.append(extra);
       restart.focus();
     });
   }

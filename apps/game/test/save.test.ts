@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BACKUP_KEY, freshSave, loadSave, parseSave, retireRun, SAVE_KEY, writeSave, type KeyValue } from '../src/core/save.ts';
+import { BACKUP_KEY, freshSave, loadSave, newRun, parseSave, retireRun, SAVE_KEY, writeSave, type KeyValue } from '../src/core/save.ts';
+import { makeBattle } from '../src/core/battle.ts';
 
 function memoryStore(): KeyValue & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -10,7 +11,7 @@ function memoryStore(): KeyValue & { data: Map<string, string> } {
 test('a written save loads back, and the previous one becomes the backup', () => {
   const store = memoryStore();
   const a = freshSave();
-  a.run = { name: 'Иванов', gender: 'm', stage: 'registered' };
+  a.run = newRun('Иванов', 'm');
   writeSave(store, a);
   const b = { ...loadSave(store), run: null };
   writeSave(store, b);
@@ -47,9 +48,31 @@ test('storage that throws (private mode) does not break the game', () => {
 
 test('retiring a run crosses its soldier out once', () => {
   const s = freshSave();
-  s.run = { name: 'Иванов', gender: 'm', stage: 'registered' };
+  s.run = newRun('Иванов', 'm');
   const once = retireRun(s);
   assert.equal(once.run, null);
   assert.deepEqual(once.memory.names, ['Иванов']);
   assert.deepEqual(retireRun({ ...once, run: s.run }).memory.names, ['Иванов']);
+});
+
+test('a schema 1 save migrates: the soldier keeps the name and gets three hits', () => {
+  const old = JSON.stringify({ schema: 1, generation: 4, run: { name: 'Петрова', gender: 'f', stage: 'registered' }, memory: { names: ['Сырков'] } });
+  const s = parseSave(old);
+  assert.equal(s?.schema, 2);
+  assert.deepEqual(s?.run, { name: 'Петрова', gender: 'f', stage: 'registered', hp: 3, trust: { norkin: 1 }, battle: null });
+  assert.deepEqual(s?.memory.names, ['Сырков']);
+});
+
+test('a battle in progress saves and loads; a broken one is dropped, the run stays', () => {
+  const store = memoryStore();
+  const s = freshSave();
+  s.run = newRun('Иванов', 'm');
+  const state = makeBattle({ seed: 3, pairs: [{ striker: 'norkin', coord: 'player', x: 4 }], weak: 2, traps: 1, secrets: 1, retreatAfter: 8, maxTurns: 8 });
+  s.run.battle = { id: 'b1', state, memory: { trust: 2, partnerScared: true, playerScared: false, stats: { crushed: 1 } } };
+  writeSave(store, s);
+  assert.deepEqual(loadSave(store).run?.battle?.state, state);
+  const broken = JSON.parse(store.data.get(SAVE_KEY)!);
+  broken.run.battle.state.units = 'no';
+  assert.equal(parseSave(JSON.stringify(broken))?.run?.battle, null);
+  assert.equal(parseSave(JSON.stringify(broken))?.run?.name, 'Иванов');
 });

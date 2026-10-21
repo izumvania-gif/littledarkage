@@ -11,7 +11,8 @@ import './style.css';
 import { Graphics } from 'pixi.js';
 import { LINE, PLAYER } from './content/recruits.ts';
 import { SPEECH } from './content/speech.ts';
-import { loadSave, retireRun, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
+import { makeBattle } from './core/battle.ts';
+import { loadSave, newRun, retireRun, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
 import { loadSettings, saveSettings, type Settings } from './core/settings.ts';
 import { AudioEngine } from './engine/audio.ts';
 import { buildLineup, type LineupScene } from './render/lineup.ts';
@@ -20,9 +21,13 @@ import { RedGlasses } from './render/redGlasses.ts';
 import { createStage, type Stage } from './render/stage.ts';
 import { LINEUP_HOLES } from './render/tears.ts';
 import { CaptionPlate, type Cue } from './ui/caption.ts';
+import { BATTLES, type BattleId } from './content/battles.ts';
+import { WORKSHOP_END, workshopLines } from './content/workshop.ts';
 import { battleRange, isBattleId } from './stages/battle/range.ts';
+import { runBattle } from './stages/battle/run.ts';
+import type { BattleContext } from './stages/battle/types.ts';
 import { debugPanel } from './ui/debug.ts';
-import { wait } from './ui/dom.ts';
+import { h, wait } from './ui/dom.ts';
 import { isPhone, showDesktopOnly, showIntro } from './ui/intro.ts';
 
 /** Cut-out animation steps at 12 frames a second. */
@@ -130,12 +135,88 @@ async function prologue(plate: CaptionPlate, scene: LineupScene, audio: AudioEng
   }
 
   general.setPose('speak');
-  const run: RunState = { name: player.name, gender: player.gender, stage: 'registered' };
+  const run = newRun(player.name, player.gender);
   const next: SaveFile = { ...save, run };
   writeSave(store, next);
   await plate.register(next.memory.names, entryLine(run), true);
   general.setPose('rest');
   return next;
+}
+
+interface Barracks {
+  stage: Stage;
+  ui: HTMLElement;
+  audio: AudioEngine;
+  settings: Settings;
+  reduced: boolean;
+  plate: CaptionPlate;
+  scene: LineupScene;
+  glasses: RedGlasses;
+  dark: Graphics;
+  store: KeyValue | null;
+  debug: boolean;
+}
+
+/**
+ * The workshop: the general explains the battle, the light goes out, and the player coordinates Норкин for a
+ * few training turns. A battle left half-way resumes where it was saved, without the explanation again.
+ */
+async function workshop(w: Barracks, save: SaveFile): Promise<void> {
+  const run = save.run;
+  if (!run) return;
+  const { plate, scene, glasses, dark } = w;
+  plate.header('2.', 'ВОРКШОП');
+  if (!run.battle) {
+    scene.general.setPose('speak');
+    for (const line of workshopLines(`${rank(run.gender)} ${run.name}`)) await plate.type(line);
+    scene.general.setPose('rest');
+  }
+
+  // The light goes out; the training battle runs in the tunnel.
+  w.audio.click();
+  plate.el.hidden = true;
+  glasses.view.visible = false;
+  dark.visible = false;
+  const id: BattleId = 'training';
+  const def = BATTLES[id];
+  const saved = run.battle?.id === id ? run.battle : null;
+  const ctx: BattleContext = {
+    stage: w.stage,
+    ui: w.ui,
+    audio: w.audio,
+    settings: w.settings,
+    reduced: w.reduced,
+    def,
+    battle: saved?.state ?? makeBattle({ ...def.setup, seed: Math.floor(Math.random() * 1e9) }),
+    memory: saved?.memory ?? { trust: run.trust.norkin ?? 1, partnerScared: false, playerScared: false, stats: {} },
+    commit: () => {
+      run.battle = { id, state: ctx.battle, memory: ctx.memory };
+      writeSave(w.store, save);
+    },
+    debug: w.debug,
+  };
+  await runBattle(ctx);
+  // Training costs no hits; what Норкин learned about the player stays.
+  run.trust.norkin = ctx.memory.trust;
+  run.battle = null;
+  run.stage = 'trained';
+  writeSave(w.store, save);
+
+  glasses.view.visible = true;
+  dark.visible = true;
+  dark.alpha = 0.93;
+  await lightsOn(w.stage, dark, w.audio, w.reduced);
+  plate.el.hidden = false;
+  scene.general.setPose('speak');
+  await plate.type(WORKSHOP_END);
+  scene.general.setPose('rest');
+}
+
+/** Links to the battles on their own, until the story reaches them. */
+function rangeLinks(): HTMLElement {
+  const ids: BattleId[] = ['b1', 'b2', 'b3'];
+  const links = ids.map((id) => h('a', { text: BATTLES[id].title, attrs: { href: `?battle=${id}` } }));
+  return h('p', { class: 'range-links' }, 'Бои пока можно сыграть отдельно, на полигоне: ', ...links.flatMap((a, i) => (i ? [' · ', a] : [a])), '.');
 }
 
 async function main(): Promise<void> {
@@ -195,7 +276,8 @@ async function main(): Promise<void> {
       // Poses change between frames too; baking at 12 fps catches them.
       glasses.invalidate();
     }
-    glasses.update();
+    // Hidden while a battle has the stage.
+    if (glasses.view.visible) glasses.update();
   });
 
   let save = loadSave(store);
@@ -211,9 +293,11 @@ async function main(): Promise<void> {
 
   const run = save.run;
   if (!run) return;
+  if (run.stage === 'registered') await workshop({ stage, ui, audio, settings, reduced, plate, scene, glasses, dark, store, debug: params.has('debug') }, save);
   await plate.end(
-    `${rank(run.gender)} ${run.name} в строю. Дальше будут воркшоп, встреча Крыпоткина и первый цикл: это следующие вехи.`,
+    `${rank(run.gender)} ${run.name} ${run.gender === 'f' ? 'прошла' : 'прошёл'} воркшоп. Дальше будут самодеятельность, встреча Крыпоткина и первый цикл: это следующие вехи.`,
     `${rank(run.gender)} ${run.name} уйдёт в книгу учёта зачёркнутым, и взять это имя снова будет нельзя.`,
+    rangeLinks(),
   );
   writeSave(store, retireRun(save));
   location.reload();

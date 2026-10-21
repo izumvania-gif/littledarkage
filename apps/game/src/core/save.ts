@@ -1,20 +1,48 @@
 /**
  * The save: one key holding both layers, plus a backup of the previous write.
- * - run: this playthrough (reset by «Начать с построения»);
+ * - run: this playthrough (reset by «Начать с построения»), with a battle in progress saved after every turn;
  * - memory: what outlives playthroughs, such as the names crossed out in the register.
  * Bump SAVE_SCHEMA and add a migration in parseSave when the shape changes.
  */
+import { MAX_HP, type Battle } from './battle.ts';
 
-export const SAVE_SCHEMA = 1;
+export const SAVE_SCHEMA = 2;
 export const SAVE_KEY = 'lda.save';
 export const BACKUP_KEY = 'lda.save.bak';
 
 export type Gender = 'm' | 'f';
 
+/** How far the story got: registered at the lineup, then through the workshop's training battle. */
+export type Story = 'registered' | 'trained';
+
+/** What a battle carries besides the field; saved with it. */
+export interface BattleMemory {
+  /** The partner's trust in the player, 0..3 (from the barracks; the battle moves it). */
+  trust: number;
+  /** The partner was hit or cried out last turn, so his quirks are on (visible to the player). */
+  partnerScared: boolean;
+  /** The player (as striker) was hit last turn: their coordinator is scared too. */
+  playerScared: boolean;
+  /** Counters for the register and the stats: crushed, secrets, caught, accepted, followed, ignored… */
+  stats: Record<string, number>;
+}
+
+/** A battle in progress: it can't be rewound, so it is saved after every turn and resumed as it was. */
+export interface BattleSave {
+  id: string;
+  state: Battle;
+  memory: BattleMemory;
+}
+
 export interface RunState {
   name: string;
   gender: Gender;
-  stage: 'registered';
+  stage: Story;
+  /** The soldier's one pool of hits for the whole game, in any seat. */
+  hp: number;
+  /** Named soldiers' trust in the player, 0..3. */
+  trust: Record<string, number>;
+  battle: BattleSave | null;
 }
 
 export interface Memory {
@@ -36,9 +64,30 @@ export function freshSave(): SaveFile {
   return { schema: SAVE_SCHEMA, generation: 0, run: null, memory: { names: [] } };
 }
 
-function isRun(v: unknown): v is RunState {
-  const r = v as RunState;
-  return !!r && typeof r.name === 'string' && (r.gender === 'm' || r.gender === 'f') && r.stage === 'registered';
+/** A new soldier at the lineup. */
+export function newRun(name: string, gender: Gender): RunState {
+  return { name, gender, stage: 'registered', hp: MAX_HP, trust: { norkin: 1 }, battle: null };
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
+function parseBattle(v: unknown): BattleSave | null {
+  if (!isObject(v) || typeof v.id !== 'string' || !isObject(v.state) || !isObject(v.memory)) return null;
+  const st = v.state;
+  const m = v.memory;
+  if (typeof st.turn !== 'number' || typeof st.rng !== 'number' || !Array.isArray(st.units) || !Array.isArray(st.coords) || !Array.isArray(st.creatures)) return null;
+  if (typeof m.trust !== 'number' || !isObject(m.stats)) return null;
+  return v as unknown as BattleSave;
+}
+
+/** A run of any schema, migrated to the current one; a battle that doesn't load restarts from its start (null). */
+function parseRun(v: unknown): RunState | null {
+  if (!isObject(v) || typeof v.name !== 'string' || (v.gender !== 'm' && v.gender !== 'f')) return null;
+  const stage: Story = v.stage === 'trained' ? 'trained' : 'registered';
+  const hp = typeof v.hp === 'number' && v.hp >= 0 && v.hp <= MAX_HP ? v.hp : MAX_HP;
+  const trust: Record<string, number> = { norkin: 1 };
+  if (isObject(v.trust)) for (const [k, t] of Object.entries(v.trust)) if (typeof t === 'number') trust[k] = Math.max(0, Math.min(3, t));
+  return { name: v.name, gender: v.gender, stage, hp, trust, battle: parseBattle(v.battle) };
 }
 
 export function parseSave(raw: string | null): SaveFile | null {
@@ -49,10 +98,11 @@ export function parseSave(raw: string | null): SaveFile | null {
   } catch {
     return null;
   }
-  const s = data as Partial<SaveFile>;
-  if (!s || s.schema !== SAVE_SCHEMA || typeof s.generation !== 'number') return null;
+  const s = data as { schema?: unknown; generation?: unknown; run?: unknown; memory?: { names?: unknown } };
+  // Schema 1 had runs without hits, trust or battles; parseRun fills them in.
+  if (!s || (s.schema !== 1 && s.schema !== SAVE_SCHEMA) || typeof s.generation !== 'number') return null;
   const names = Array.isArray(s.memory?.names) ? s.memory.names.filter((n): n is string => typeof n === 'string') : [];
-  return { schema: SAVE_SCHEMA, generation: s.generation, run: isRun(s.run) ? s.run : null, memory: { names } };
+  return { schema: SAVE_SCHEMA, generation: s.generation, run: parseRun(s.run), memory: { names } };
 }
 
 /** The main key, else the backup, else a fresh save. Storage may be missing or throw (private mode). */

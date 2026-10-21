@@ -353,6 +353,15 @@ a.primary {
   color: var(--cream);
 }
 
+.caption .range-links {
+  margin: 0;
+}
+
+.caption .range-links a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 /* ---------- debug ---------- */
 
 .debug {
