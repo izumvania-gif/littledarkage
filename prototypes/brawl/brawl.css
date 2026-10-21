@@ -1,0 +1,114 @@
+/* The brawl's plates. The canvas hides the system cursor: the crosshair is drawn in it. */
+#stage {
+  cursor: none;
+}
+
+.slogan {
+  position: absolute;
+  padding: calc(4 * var(--u)) calc(14 * var(--u));
+  background: var(--red);
+  color: var(--paper);
+  font-family: var(--poster);
+  font-size: max(1rem, calc(30 * var(--u)));
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.slogan.on {
+  opacity: 1;
+}
+
+.bubble {
+  position: absolute;
+  max-width: 16rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--cream);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-size: max(0.85rem, calc(16 * var(--u)));
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.voice {
+  position: absolute;
+  padding: 0.15rem 0.6rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: max(1.1rem, calc(26 * var(--u)));
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.voice.drowned s {
+  text-decoration-thickness: 3px;
+}
+
+.voice small {
+  margin-left: 0.5em;
+  font-size: 0.6em;
+  font-weight: 400;
+  color: var(--muted-dark);
+}
+
+.hud {
+  position: absolute;
+  padding: 0.1rem 0.6rem;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: max(0.8rem, calc(15 * var(--u)));
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.hud kbd {
+  border-color: var(--ink);
+}
+
+.center-plate {
+  position: absolute;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+  padding: 0.6rem 1.2rem;
+  background: var(--cream);
+  color: var(--ink);
+  border-top: 4px solid var(--ink);
+  font-size: max(1rem, calc(20 * var(--u)));
+  text-align: center;
+}
+
+.center-plate p {
+  margin: 0;
+}
+
+.center-plate kbd {
+  border-color: var(--ink);
+}
+
+.center-plate .secondary {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.center-plate .secondary:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.center-plate .keys {
+  text-align: left;
+  font-size: 0.85em;
+}
+
+.center-plate.big {
+  font-family: var(--poster);
+  font-size: max(1.1rem, calc(26 * var(--u)));
+  line-height: 1.25;
+}
