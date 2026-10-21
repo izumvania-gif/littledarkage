@@ -1,0 +1,70 @@
+/* The barracks' DOM layer: the row of places at the top of the picture and the «E — …» hint by the player. */
+.bk {
+  position: absolute;
+  pointer-events: none;
+}
+
+.bk > * {
+  pointer-events: auto;
+}
+
+.bk-bar {
+  position: absolute;
+  top: calc(14 * var(--u));
+  left: calc(20 * var(--u));
+  right: calc(20 * var(--u));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bk-go {
+  padding: 0.3rem 0.75rem;
+  border: 2px solid var(--ink);
+  background: var(--cream);
+  color: var(--ink);
+  font: 700 max(0.85rem, calc(16 * var(--u))) var(--serif);
+}
+
+.bk-go:hover,
+.bk-go.near {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.bk-go:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
+.bk-keys {
+  margin: 0 0 0 auto;
+  padding: 0.25rem 0.6rem;
+  background: var(--cream);
+  color: var(--ink);
+  font: max(0.8rem, calc(14 * var(--u))) var(--serif);
+}
+
+.bk-keys kbd,
+.bk-hint kbd {
+  display: inline-block;
+  min-width: 1.3em;
+  padding: 0 0.3em;
+  border: 2px solid var(--ink);
+  font: inherit;
+  font-family: var(--mono);
+  text-align: center;
+}
+
+.bk-hint {
+  position: absolute;
+  margin: 0;
+  padding: 0.25rem 0.6rem;
+  transform: translate(-50%, -100%);
+  background: var(--cream);
+  color: var(--ink);
+  font: 700 max(0.85rem, calc(16 * var(--u))) var(--serif);
+  white-space: nowrap;
+  pointer-events: none;
+}
