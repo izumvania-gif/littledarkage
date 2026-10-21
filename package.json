@@ -2,7 +2,7 @@
   "name": "littledarkage",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/game", "server"],
+  "workspaces": ["apps/game", "server", "prototypes"],
   "engines": { "node": ">=22.13" },
   "scripts": {
     "dev": "npm run dev --workspace=apps/game",
@@ -10,6 +10,7 @@
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test --workspaces --if-present",
-    "start": "npm run start --workspace=server"
+    "start": "npm run start --workspace=server",
+    "dev:proto": "npm run dev --workspace=prototypes"
   }
 }

@@ -12,12 +12,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Run from the repo root (npm workspaces: `apps/game`, `server`; Node >= 22.13).
+Run from the repo root (npm workspaces: `apps/game`, `server`, `prototypes`; Node >= 22.13).
 
 - `npm ci` — install
 - `npm run dev` + `npm run dev:server` — Vite client on :5173 (proxies `/api` to :3000) and Fastify server on :3000
+- `npm run dev:proto` — the milestone 1 prototypes on http://localhost:5174/proto/
 - `npm run typecheck` / `npm test` / `npm run build`
-- `npm start` — serve the built client from the compiled server (`PORT`, `STATIC_DIR` env vars)
+- `npm start` — serve the built client and prototypes from the compiled server (`PORT`, `STATIC_DIR`, `PROTO_DIR` env vars)
 - Single test file: `cd apps/game && node --experimental-strip-types --test test/save.test.ts` (same pattern in `server/`)
 - `?debug` shows a slider for t («где в игре», 0..1); `?t=0.55` opens the scene at that t; `?desktop` skips the phone check.
 
@@ -34,7 +35,9 @@ Client (`apps/game`, Vite + TypeScript + PixiJS 8, no UI framework — DOM via `
 - `content/speech.ts` must match the quoted lines of «Речь генерала» in `docs/concept.md` word for word (`test/speech.test.ts`). Change the concept first.
 - TypeScript runs with `erasableSyntaxOnly`: no parameter properties, enums or namespaces; imports carry the `.ts` extension.
 
-Server (`server`): Fastify app built in `src/app.ts`. It has `/api/health` and serves `apps/game/dist` with an SPA fallback; other `/api/*` paths return a JSON 404. No database until the online layer.
+Prototypes (`prototypes`, milestone 1): three throwaway prototypes that answer the main risk of the concept (is it interesting to be blind, to be the voice, and does the mutiny brawl hold). `coordinator/`, `striker/`, `brawl/`, each a Vite page in Canvas 2D on `shared/` (`sim.ts` + `planner.ts` battle rules and the NPC coordinator, `frame.ts`, `sound.ts`, `session.ts` with the start card, the end card and the observer's numbers kept in localStorage and listed on `/proto/`). Briefs and keep/kill criteria are in `prototypes/README.md`. Prototype code is hard-coded on purpose: `apps/game` never imports it, and a keep verdict means rewriting the mechanic in the game (`core/battle.ts` with tests, stages), not copying it.
+
+Server (`server`): Fastify app built in `src/app.ts`. It has `/api/health`, serves `apps/game/dist` with an SPA fallback and `prototypes/dist` under `/proto/`; other `/api/*` paths return a JSON 404. No database until the online layer.
 
 ## External skills
 
@@ -42,4 +45,4 @@ As in Eferon, the visual and UI work follows external rule sets, cloned to a tem
 
 ## Deploy
 
-Pushes to `main` run `.github/workflows/ci.yml` (typecheck, tests, build, Docker build + smoke test). Amvera builds the root `Dockerfile` per `amvera.yml` (docker environment, port 3000, the `/data` mount reserved for the online layer) and deploys on the GitHub "Workflow runs" trigger, so only green CI deploys. The Dockerfile copies `apps/game` and `server` explicitly; add new top-level source dirs (`story/`) there.
+Pushes to `main` run `.github/workflows/ci.yml` (typecheck, tests, build, Docker build + smoke test). Amvera builds the root `Dockerfile` per `amvera.yml` (docker environment, port 3000, the `/data` mount reserved for the online layer) and deploys on the GitHub "Workflow runs" trigger, so only green CI deploys. The Dockerfile copies `apps/game`, `server` and `prototypes` explicitly; add new top-level source dirs (`story/`) there.

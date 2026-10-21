@@ -4,6 +4,7 @@
 
 - [docs/concept.md](docs/concept.md) — концепция веб-версии: сюжет, механики, фидбэк прогона 2022 года, правки, техплан, вехи и открытые вопросы.
 - [docs/source](docs/source/) — исходные документы ролевой (`.docx` и их текст в `.md`) и [письма из дома](docs/source/letters.md).
+- [prototypes](prototypes/README.md) — три одноразовых прототипа вехи 1 (координатор, ударник, драка) с критериями «оставить или выбросить»; на сайте по адресу `/proto/`.
 
 ## Запуск
 
@@ -13,6 +14,7 @@
 npm ci
 npm run dev          # игра на http://localhost:5173
 npm run dev:server   # сервер на :3000 (пока только раздаёт игру)
+npm run dev:proto    # прототипы на http://localhost:5174/proto/
 npm test             # тесты игры и сервера
 npm run build && npm start   # собранная игра на http://localhost:3000
 ```

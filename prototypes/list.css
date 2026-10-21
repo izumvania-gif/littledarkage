@@ -1,0 +1,46 @@
+body.scroll {
+  overflow: auto;
+}
+
+.list {
+  display: grid;
+  gap: 1rem;
+  max-width: 46rem;
+  padding: 3rem max(1.5rem, 6vw);
+}
+
+.list h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.05;
+}
+
+.list h2 {
+  margin: 1rem 0 0;
+}
+
+.list p {
+  margin: 0;
+}
+
+.protos {
+  display: grid;
+  gap: 1.2rem;
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.protos a {
+  color: var(--cream);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.runs {
+  margin: 0;
+  padding: 1rem;
+  background: var(--cream);
+  color: var(--ink);
+  font: 0.9rem/1.45 var(--mono);
+  white-space: pre-wrap;
+}
