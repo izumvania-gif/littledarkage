@@ -77,11 +77,12 @@ kbd {
 
 /* ---------- start and end cards ---------- */
 
+/* A tall card scrolls from its top instead of being cut off (margin: auto centres a short one). */
 .card {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 2rem max(1.5rem, 8vw);
   background: rgba(15, 14, 13, 0.95);
   overflow-y: auto;
@@ -91,6 +92,11 @@ kbd {
   display: grid;
   gap: 1rem;
   max-width: 38rem;
+  margin: auto 0;
+}
+
+.card .primary {
+  justify-self: start;
 }
 
 .card h1 {

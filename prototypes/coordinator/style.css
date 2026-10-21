@@ -1,0 +1,237 @@
+/* Coordinator prototype: a dark panel beside the tunnel (cream on ink keeps the darkness), cream plates for speech. */
+
+.c-panel {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  gap: max(6px, calc(10 * var(--u)));
+  padding: max(10px, calc(18 * var(--u))) max(12px, calc(20 * var(--u)));
+  overflow-y: auto;
+  background: var(--ink);
+  color: var(--cream);
+  border-left: max(3px, calc(5 * var(--u))) solid var(--red);
+  font-size: max(13px, calc(17 * var(--u)));
+  line-height: 1.35;
+}
+
+.c-panel p {
+  margin: 0;
+}
+
+.c-turn {
+  font-family: var(--poster);
+  font-size: max(12px, calc(17 * var(--u)));
+  letter-spacing: 0.02em;
+}
+
+.c-phase {
+  font-weight: 700;
+  font-size: max(15px, calc(22 * var(--u)));
+}
+
+.c-sub {
+  min-height: 2.7em;
+  color: var(--muted-dark);
+}
+
+.c-queue {
+  display: grid;
+  gap: max(4px, calc(6 * var(--u)));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+}
+
+.c-queue li {
+  padding: max(3px, calc(5 * var(--u))) max(6px, calc(10 * var(--u)));
+  border: 2px solid rgba(234, 223, 198, 0.35);
+  color: var(--muted-dark);
+}
+
+.c-queue li.filled {
+  border-color: var(--cream);
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.c-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: max(4px, calc(6 * var(--u)));
+}
+
+.c-pad button,
+.c-row button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15em 0.4em;
+  padding: max(4px, calc(6 * var(--u))) max(5px, calc(8 * var(--u)));
+  border: 2px solid var(--cream);
+  background: transparent;
+  color: var(--cream);
+  text-align: left;
+  font-size: max(12px, calc(15 * var(--u)));
+  line-height: 1.2;
+}
+
+.c-pad button.wide {
+  grid-column: span 3;
+}
+
+.c-pad button:hover:not(:disabled),
+.c-row button:hover:not(:disabled) {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.c-pad button:disabled,
+.c-row button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.c-pad kbd,
+.c-row kbd {
+  font-size: 0.8em;
+}
+
+.c-row {
+  display: flex;
+  gap: max(4px, calc(8 * var(--u)));
+}
+
+.c-row .c-done {
+  flex: 1;
+  border-color: var(--red);
+  background: var(--red);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.c-row .c-done:hover:not(:disabled) {
+  border-color: var(--red-deep);
+  background: var(--red-deep);
+  color: var(--paper);
+}
+
+.c-panel[data-phase='exec'] .c-queue li.filled,
+.c-panel[data-phase='prompt'] .c-queue li.filled {
+  background: transparent;
+  color: var(--cream);
+}
+
+/* Норкин's name under his last known place: plain cream on the dark, never a plate (it must not light the tunnel). */
+.c-tag {
+  position: absolute;
+  margin: 0;
+  color: var(--cream);
+  font-weight: 700;
+  font-size: max(11px, calc(14 * var(--u)));
+  letter-spacing: 0.03em;
+  text-shadow:
+    0 0 3px #000,
+    0 0 6px #000;
+  pointer-events: none;
+}
+
+.c-speech {
+  position: absolute;
+  max-width: max(160px, calc(290 * var(--u)));
+  margin: 0;
+  padding: max(4px, calc(6 * var(--u))) max(7px, calc(10 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  font-size: max(12px, calc(16 * var(--u)));
+  line-height: 1.3;
+}
+
+.c-speech b {
+  display: block;
+  font-size: 0.85em;
+}
+
+.c-bark {
+  position: absolute;
+  margin: 0;
+  padding: 0 0.4em;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--hand);
+  font-size: max(14px, calc(22 * var(--u)));
+  line-height: 1.3;
+  pointer-events: none;
+  animation: c-bark 1.7s forwards;
+}
+
+@keyframes c-bark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -115%);
+  }
+}
+
+.c-accept {
+  position: absolute;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: max(8px, calc(12 * var(--u))) max(12px, calc(20 * var(--u)));
+  background: var(--red);
+  color: var(--paper);
+  font-size: max(14px, calc(19 * var(--u)));
+}
+
+.c-accept p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.c-accept button {
+  padding: 0.35em 0.9em;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.c-accept kbd {
+  border-color: var(--ink);
+  font-size: 0.8em;
+}
+
+.c-accept .bar {
+  width: 100%;
+  background: rgba(255, 248, 236, 0.3);
+}
+
+.c-accept .bar > i {
+  background: var(--paper);
+}
+
+.c-debug {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  max-width: 60vw;
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(15, 14, 13, 0.88);
+  color: var(--cream);
+  font: 12px/1.45 var(--mono);
+  white-space: pre-wrap;
+  pointer-events: none;
+}
