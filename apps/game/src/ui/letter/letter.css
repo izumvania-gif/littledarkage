@@ -1,0 +1,190 @@
+/*
+ * The letter modal: a dark table, the paper (canvas) with the text over it, and a cream plate with the
+ * choices. The text is DOM on the paper; the inks are dark enough for 4.5:1 on its palest part.
+ */
+.lt {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 14, 13, 0.92);
+  opacity: 0;
+  transition: opacity 0.26s ease-out;
+}
+
+.lt.lt-in {
+  opacity: 1;
+}
+
+.lt.lt-reduced {
+  transition: none;
+}
+
+.lt-body {
+  display: flex;
+  align-items: center;
+  gap: 2.2rem;
+}
+
+.lt-sheet {
+  position: relative;
+  flex: none;
+  cursor: pointer;
+}
+
+.lt-canvas {
+  display: block;
+}
+
+.lt-text {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  overflow-y: auto;
+  font-family: var(--hand, 'Bad Script', cursive);
+  line-height: 1.42;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 44, 24, 0.5) transparent;
+}
+
+.lt-text.lt-shown {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: auto;
+}
+
+.lt-reduced .lt-text {
+  transition: none;
+}
+
+.lt-text p {
+  margin: 0 0 0.45em;
+  text-indent: 1.4em;
+}
+
+.lt-text p:first-child {
+  text-indent: 0;
+}
+
+.lt-hand-child {
+  letter-spacing: 0.02em;
+  transform: rotate(-0.5deg);
+}
+
+.lt-hand-typed {
+  font-family: var(--mono, 'PT Mono', monospace);
+  line-height: 1.5;
+}
+
+.lt-side {
+  box-sizing: border-box;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.3rem 1.4rem 1.4rem;
+  background: var(--cream, #eadfc6);
+  color: var(--ink, #1c1a18);
+  border-top: 6px solid var(--ink, #1c1a18);
+  font-family: var(--serif, 'PT Serif', serif);
+}
+
+.lt-title {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+
+.lt-meta,
+.lt-hint {
+  margin: 0;
+}
+
+.lt-hint {
+  color: var(--muted-cream, #5a5248);
+}
+
+.lt-actions,
+.lt-reply {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lt-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lt-btn {
+  justify-self: stretch;
+  padding: 0.55rem 0.9rem;
+  border: 2px solid var(--ink, #1c1a18);
+  background: transparent;
+  color: var(--ink, #1c1a18);
+  font: 700 1rem var(--serif, 'PT Serif', serif);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lt-btn:hover {
+  background: var(--ink, #1c1a18);
+  color: var(--cream, #eadfc6);
+}
+
+.lt-btn.lt-main {
+  border-color: var(--red, #c62f24);
+  background: var(--red, #c62f24);
+  color: var(--paper, #fff8ec);
+}
+
+.lt-btn.lt-main:hover {
+  border-color: var(--red-deep, #a8271e);
+  background: var(--red-deep, #a8271e);
+}
+
+.lt-btn kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  border: 1.5px solid currentColor;
+  font: 0.8em var(--mono, 'PT Mono', monospace);
+  text-align: center;
+}
+
+.lt-btn:focus-visible,
+.lt-area:focus-visible {
+  outline: 3px solid var(--red, #c62f24);
+  outline-offset: 2px;
+}
+
+.lt-label {
+  font-weight: 700;
+}
+
+.lt-area {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 12rem;
+  padding: 0.6rem 0.7rem;
+  border: 2px solid var(--ink, #1c1a18);
+  background: var(--paper, #fff8ec);
+  color: #26304f;
+  font: 1.15rem/1.4 var(--hand, 'Bad Script', cursive);
+  resize: vertical;
+}
+
+.lt-confirm p {
+  margin: 0 0 0.4rem;
+  color: var(--error, #8e1f17);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .lt-body {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
