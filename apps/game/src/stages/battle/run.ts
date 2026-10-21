@@ -37,6 +37,7 @@ async function play(stage: BattleStage): Promise<StageExit> {
 /** The player climbs out of the zone at its middle with the hits left, and the script waits at the end. */
 function walkOut(b: Battle): void {
   const me = b.coords.find((c) => c.id === PLAYER_ID);
+  if (me) me.walksOut = false;
   const x = [4, 3, 5, 2, 6, 1, 7, 0, 8].find((col) => !unitAt(b, col, 8) && !creatureAt(b, col, 8)) ?? 4;
   enlist(b, { id: PLAYER_ID, x, y: 8, dir: 0, hp: Math.max(1, me?.hp ?? 1), alive: true, jump: 2, bag: false, coord: null, fate: { dies: b.maxTurns } });
 }

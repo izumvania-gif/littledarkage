@@ -1,0 +1,245 @@
+/* The blind striker: a black frame; every line and caption is a flat plate. Sizes follow the 1280×720 frame (--u). */
+
+#ui > .sk-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sk-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.sk-root p {
+  margin: 0;
+}
+
+.sk-line {
+  position: absolute;
+  display: grid;
+  gap: 0.1rem;
+  max-width: calc(360 * var(--u));
+  padding: calc(8 * var(--u)) calc(14 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: 0 0 calc(30 * var(--u)) rgba(0, 0, 0, 0.6);
+  transition: opacity 0.45s;
+  animation: sk-in 0.25s ease-out;
+}
+
+@keyframes sk-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.sk-line.fade {
+  opacity: 0;
+}
+
+.sk-line .who {
+  font: 700 max(0.7rem, calc(13 * var(--u))) var(--serif);
+  color: var(--muted-cream);
+  letter-spacing: 0.02em;
+}
+
+.sk-line .text {
+  line-height: 1.2;
+  font: max(0.95rem, calc(19 * var(--u))) var(--serif);
+}
+
+/* Each coordinator's own hand: Норкин writes by hand, Седой types, the rest print. */
+.sk-line.hand-hand .text {
+  font-family: var(--hand);
+  font-size: max(1.15rem, calc(29 * var(--u)));
+}
+
+.sk-line.hand-mono .text {
+  font-family: var(--mono);
+  font-size: max(0.85rem, calc(17 * var(--u)));
+}
+
+.sk-line.hand-serif .text {
+  font-weight: 700;
+}
+
+.sk-line.partner {
+  border-left: calc(6 * var(--u)) solid var(--ink);
+}
+
+.sk-line.whisper .text {
+  font-size: max(1rem, calc(24 * var(--u)));
+}
+
+.sk-line .hint {
+  justify-self: end;
+  margin-top: 0.2rem;
+  font: max(0.75rem, calc(13 * var(--u))) var(--serif);
+  color: var(--muted-cream);
+}
+
+.sk-turn {
+  position: absolute;
+  padding: calc(4 * var(--u)) calc(10 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  font: 700 max(0.8rem, calc(15 * var(--u))) var(--serif);
+}
+
+.sk-captions {
+  position: absolute;
+  display: grid;
+  justify-items: start;
+  gap: calc(4 * var(--u));
+  width: calc(400 * var(--u));
+}
+
+.sk-cap {
+  padding: calc(3 * var(--u)) calc(9 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  font: max(0.75rem, calc(15 * var(--u))) var(--mono);
+  transition: opacity 0.4s;
+}
+
+.sk-cap.fade {
+  opacity: 0;
+}
+
+.sk-dock {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  gap: calc(8 * var(--u));
+  width: calc(720 * var(--u));
+  padding: calc(10 * var(--u)) calc(12 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.sk-bar {
+  height: calc(8 * var(--u));
+  min-height: 4px;
+  background: rgba(28, 26, 24, 0.15);
+}
+
+.sk-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.sk-bar.off {
+  visibility: hidden;
+}
+
+.sk-row {
+  display: flex;
+  gap: calc(10 * var(--u));
+  align-items: center;
+}
+
+.sk-slots {
+  display: flex;
+  flex: 1;
+  gap: calc(8 * var(--u));
+}
+
+.sk-slot {
+  flex: 1;
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  border: 2px solid var(--ink);
+  font: max(0.85rem, calc(17 * var(--u))) var(--mono);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sk-slot.empty {
+  color: var(--muted-cream);
+  border-style: dashed;
+}
+
+.sk-slot.now {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.sk-done {
+  pointer-events: auto;
+  padding: calc(5 * var(--u)) calc(16 * var(--u));
+  border: 0;
+  background: var(--red);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: max(0.85rem, calc(17 * var(--u)));
+}
+
+.sk-done:hover:not(:disabled) {
+  background: var(--red-deep);
+}
+
+.sk-done:disabled {
+  background: var(--muted-cream);
+  cursor: default;
+}
+
+.sk-done:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.sk-keys {
+  position: absolute;
+  width: calc(1220 * var(--u));
+  color: var(--muted-dark);
+  font-size: max(0.7rem, calc(14 * var(--u)));
+  text-align: center;
+}
+
+.sk-keys kbd {
+  display: inline-block;
+  padding: 0 0.35em;
+  border: 1px solid currentColor;
+  font: 0.9em var(--mono);
+}
+
+.sk-center {
+  position: absolute;
+  display: grid;
+  gap: 0.3rem;
+  max-width: calc(620 * var(--u));
+  padding: calc(14 * var(--u)) calc(22 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  text-align: center;
+}
+
+.sk-center .title {
+  font: max(1.05rem, calc(24 * var(--u))) var(--serif);
+}
+
+.sk-center .sub {
+  color: var(--muted-cream);
+  font-size: max(0.8rem, calc(15 * var(--u)));
+}
+
+.sk-debug {
+  position: absolute;
+  margin: 0;
+  padding: calc(6 * var(--u)) calc(10 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  font: max(0.7rem, calc(13 * var(--u))) var(--mono);
+  white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-line,
+  .sk-cap {
+    animation: none;
+    transition: none;
+  }
+}

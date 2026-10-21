@@ -145,8 +145,9 @@ test('the script: Сырков falls in battle 1, Крыпоткин first in ba
     assert.ok(simulate('b1', seed, false).falls.includes('syrkov'));
     const three = simulate('b3', seed, false);
     assert.equal(three.falls[0], 'krypotkin');
-    assert.equal(three.b.outcome, 'fallen');
+    // With the strikers gone the player is still to walk out: the battle goes on to the last turn.
     assert.ok(!three.b.units.some((u) => u.alive));
+    assert.equal(three.b.outcome, 'time');
   }
   assert.ok(!BATTLES.b2.setup.pairs.some((p) => p.striker !== PLAYER_ID && typeof p.fate === 'object'));
 });

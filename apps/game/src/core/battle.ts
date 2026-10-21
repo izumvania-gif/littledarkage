@@ -78,6 +78,8 @@ export interface Coordinator {
   alive: boolean;
   /** The script takes him at the end of that turn (battle 3); his striker is left without a voice. */
   dies?: number;
+  /** He will walk onto the field alone once the strikers are gone (the player in battle 3): until then the battle isn't over. */
+  walksOut?: boolean;
 }
 
 export interface Creature {
@@ -564,7 +566,7 @@ export function endTurn(b: Battle): Ev[] {
     for (const c of b.creatures) c.alive = false;
     ev.push({ t: 'retreat' });
     outcome = 'retreat';
-  } else if (b.units.every((u) => !u.alive)) outcome = 'fallen';
+  } else if (b.units.every((u) => !u.alive) && !b.coords.some((c) => c.alive && c.walksOut)) outcome = 'fallen';
   else if (b.turn >= b.maxTurns) outcome = 'time';
   if (outcome) {
     b.over = true;
@@ -587,6 +589,8 @@ export interface PairSetup {
   coordHp?: number;
   fate?: Fate;
   coordDies?: number;
+  /** The coordinator walks out alone when the field is empty (battle 3). */
+  coordWalksOut?: boolean;
   bag?: boolean;
 }
 
@@ -628,7 +632,7 @@ export function makeBattle(setup: BattleSetup): Battle {
   };
   for (const p of setup.pairs) {
     b.units.push({ id: p.striker, x: p.x, y: p.y ?? 7, dir: 0, hp: p.hp ?? MAX_HP, alive: true, jump: p.jump ?? 2, lost: 0, bonus: 0, actions: ACTIONS_PER_TURN, sniffed: false, bag: p.bag ?? false, coord: p.coord, fate: p.fate ?? 'free' });
-    if (p.coord) b.coords.push({ id: p.coord, x: p.x, hp: p.coordHp ?? MAX_HP, alive: true, ...(p.coordDies ? { dies: p.coordDies } : {}) });
+    if (p.coord) b.coords.push({ id: p.coord, x: p.x, hp: p.coordHp ?? MAX_HP, alive: true, ...(p.coordDies ? { dies: p.coordDies } : {}), ...(p.coordWalksOut ? { walksOut: true } : {}) });
   }
   const used = new Set(b.units.map((u) => `${u.x},${u.y}`));
   const place = ([from, to]: Cell, [left, right]: Cell = [0, SIZE - 1]): Cell => {

@@ -1,0 +1,330 @@
+/*
+ * The coordinator's battle: a dark panel beside the tunnel (cream on ink keeps the darkness dark), cream plates
+ * for every line that carries meaning (4.5:1 or better). Positions are reference pixels times --u.
+ */
+
+#ui > .cs {
+  position: absolute;
+  pointer-events: none;
+}
+
+.cs > * {
+  position: absolute;
+  margin: 0;
+}
+
+.cs kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  border: 2px solid currentColor;
+  font-family: var(--mono);
+  font-size: 0.8em;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.cs-panel {
+  left: calc(912 * var(--u));
+  top: calc(36 * var(--u));
+  width: calc(340 * var(--u));
+  max-height: calc(648 * var(--u));
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  gap: max(6px, calc(10 * var(--u)));
+  padding: max(10px, calc(18 * var(--u))) max(12px, calc(20 * var(--u)));
+  overflow-y: auto;
+  background: var(--ink);
+  color: var(--cream);
+  border-left: max(3px, calc(5 * var(--u))) solid var(--red);
+  font-size: max(0.8rem, calc(17 * var(--u)));
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+.cs-panel p {
+  margin: 0;
+}
+
+.cs-turn {
+  font-family: var(--poster);
+  font-size: max(0.75rem, calc(17 * var(--u)));
+  letter-spacing: 0.02em;
+}
+
+.cs-phase {
+  font-weight: 700;
+  font-size: max(0.95rem, calc(22 * var(--u)));
+}
+
+.cs-sub {
+  min-height: 2.7em;
+  color: var(--muted-dark);
+}
+
+.cs-bar {
+  height: max(5px, calc(8 * var(--u)));
+  background: rgba(234, 223, 198, 0.25);
+}
+
+.cs-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--cream);
+  transform-origin: left;
+}
+
+.cs-queue {
+  display: grid;
+  gap: max(4px, calc(6 * var(--u)));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+}
+
+.cs-queue li {
+  padding: max(3px, calc(5 * var(--u))) max(6px, calc(10 * var(--u)));
+  border: 2px solid rgba(234, 223, 198, 0.35);
+  color: var(--muted-dark);
+}
+
+.cs-queue li.filled {
+  border-color: var(--cream);
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.cs[data-phase='exec'] .cs-queue li.filled,
+.cs[data-phase='prompt'] .cs-queue li.filled {
+  background: transparent;
+  color: var(--cream);
+}
+
+.cs-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: max(4px, calc(6 * var(--u)));
+}
+
+.cs-pad button,
+.cs-panel .cs-row button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15em 0.4em;
+  padding: max(4px, calc(6 * var(--u))) max(5px, calc(8 * var(--u)));
+  border: 2px solid var(--cream);
+  background: transparent;
+  color: var(--cream);
+  text-align: left;
+  font-size: max(0.75rem, calc(15 * var(--u)));
+  line-height: 1.2;
+}
+
+.cs-pad button.wide {
+  grid-column: span 3;
+}
+
+.cs-pad button:hover:not(:disabled),
+.cs-panel .cs-row button:hover:not(:disabled) {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.cs-pad button:disabled,
+.cs-panel .cs-row button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cs-row {
+  display: flex;
+  gap: max(4px, calc(8 * var(--u)));
+}
+
+.cs-panel .cs-row .cs-done {
+  flex: 1;
+  border-color: var(--red);
+  background: var(--red);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.cs-panel .cs-row .cs-done:hover:not(:disabled) {
+  border-color: var(--red-deep);
+  background: var(--red-deep);
+  color: var(--paper);
+}
+
+.cs-panel .cs-row .cs-done.ready:not(:disabled) {
+  outline: 3px solid var(--cream);
+  outline-offset: 2px;
+}
+
+/* The partner's name under his last known place: cream on the dark, never a plate (it must not light the tunnel). */
+.cs-tag {
+  transform: translateX(-50%);
+  color: var(--cream);
+  font-weight: 700;
+  font-size: max(0.7rem, calc(15 * var(--u)));
+  letter-spacing: 0.03em;
+  text-shadow:
+    0 0 3px #000,
+    0 0 6px #000;
+  white-space: nowrap;
+}
+
+.cs-speech {
+  transform: translate(-50%, -100%);
+  max-width: max(150px, calc(270 * var(--u)));
+  padding: max(4px, calc(6 * var(--u))) max(7px, calc(10 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  font-size: max(0.75rem, calc(16 * var(--u)));
+  line-height: 1.3;
+}
+
+.cs-speech b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 0.8em;
+}
+
+.cs-speech.hand-hand span {
+  font-family: var(--hand);
+  font-size: 1.2em;
+}
+
+.cs-speech.hand-mono span {
+  font-family: var(--mono);
+}
+
+.cs-bark {
+  padding: 0 0.4em;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--hand);
+  font-size: max(0.9rem, calc(22 * var(--u)));
+  line-height: 1.3;
+  animation: cs-bark 1.7s forwards;
+}
+
+@keyframes cs-bark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -115%);
+  }
+}
+
+/* Over the idle pad, so it never hides the blow on the field. */
+.cs-accept {
+  left: calc(1082 * var(--u));
+  top: calc(470 * var(--u));
+  transform: translate(-50%, -50%);
+  width: calc(300 * var(--u));
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: max(8px, calc(12 * var(--u))) max(12px, calc(20 * var(--u)));
+  background: var(--red);
+  color: var(--paper);
+  font-size: max(0.9rem, calc(19 * var(--u)));
+  pointer-events: auto;
+}
+
+.cs-accept p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.cs-accept button {
+  padding: 0.35em 0.9em;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.cs-accept .cs-let {
+  background: transparent;
+  color: var(--paper);
+  border: 2px solid var(--paper);
+}
+
+.cs-accept .cs-bar {
+  width: 100%;
+  background: rgba(255, 248, 236, 0.3);
+}
+
+.cs-accept .cs-bar > i {
+  background: var(--paper);
+}
+
+/* The workshop's teaching plates sit on the free left of the frame, under the lettering. */
+.cs-hint {
+  left: calc(24 * var(--u));
+  top: calc(470 * var(--u));
+  width: calc(270 * var(--u));
+  box-sizing: border-box;
+  padding: max(6px, calc(10 * var(--u))) max(8px, calc(12 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  border-left: max(3px, calc(5 * var(--u))) solid var(--red);
+  font-size: max(0.8rem, calc(16 * var(--u)));
+  line-height: 1.35;
+}
+
+.cs-note {
+  left: calc(600 * var(--u));
+  top: calc(10 * var(--u));
+  transform: translateX(-50%);
+  max-width: calc(560 * var(--u));
+  padding: max(3px, calc(5 * var(--u))) max(8px, calc(12 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  font-size: max(0.8rem, calc(16 * var(--u)));
+  text-align: center;
+}
+
+.cs-pause {
+  left: calc(600 * var(--u));
+  top: calc(300 * var(--u));
+  transform: translate(-50%, -50%);
+  padding: max(8px, calc(14 * var(--u))) max(14px, calc(24 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: max(1rem, calc(24 * var(--u)));
+}
+
+.cs-debug {
+  left: calc(8 * var(--u));
+  top: calc(8 * var(--u));
+  max-width: calc(560 * var(--u));
+  padding: 6px 8px;
+  background: rgba(15, 14, 13, 0.88);
+  color: var(--cream);
+  font: 11px/1.4 var(--mono);
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-bark {
+    animation: none;
+    transform: translate(-50%, -100%);
+  }
+}

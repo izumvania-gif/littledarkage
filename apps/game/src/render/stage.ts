@@ -13,7 +13,8 @@ export interface Stage {
   app: Application;
   root: Container;
   fit: Fit;
-  onLayout(cb: (fit: Fit) => void): void;
+  /** Calls cb now and on every resize; returns the unsubscribe (battle stages come and go). */
+  onLayout(cb: (fit: Fit) => void): () => void;
 }
 
 export async function createStage(host: HTMLElement): Promise<Stage> {
@@ -49,6 +50,10 @@ export async function createStage(host: HTMLElement): Promise<Stage> {
     onLayout(cb) {
       listeners.push(cb);
       cb(fit);
+      return () => {
+        const i = listeners.indexOf(cb);
+        if (i >= 0) listeners.splice(i, 1);
+      };
     },
   };
 }

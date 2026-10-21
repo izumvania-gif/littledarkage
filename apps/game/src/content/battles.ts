@@ -125,7 +125,7 @@ export const BATTLES: Readonly<Record<BattleId, BattleDef>> = {
     setup: {
       pairs: [
         pair('krypotkin', 'sedoy', 1, { fate: { dies: 2 }, coordDies: 6 }),
-        pair('norkin', PLAYER_ID, 4, { fate: { dies: 7 } }),
+        pair('norkin', PLAYER_ID, 4, { fate: { dies: 7 }, coordWalksOut: true }),
         pair('podvalny', 'korochkina', 7, { fate: { dies: 5 }, coordDies: 6 }),
       ],
       weak: 3,
