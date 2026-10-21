@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Музыка · стенд</title>
+    <style>
+      body { margin: 0; padding: 2rem; background: #0f0e0d; color: #eadfc6; font: 16px/1.5 Georgia, serif; }
+      h1 { margin: 0 0 1rem; }
+      button { font: inherit; padding: 0.35rem 0.8rem; margin: 0.15rem; border: 2px solid #eadfc6; background: transparent; color: #eadfc6; cursor: pointer; }
+      button:hover { background: #eadfc6; color: #1c1a18; }
+      .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+      table { border-collapse: collapse; margin-top: 1rem; font: 14px/1.4 monospace; }
+      td, th { border: 1px solid #5a5248; padding: 0.25rem 0.5rem; text-align: left; vertical-align: top; }
+      #status { color: #b9ae98; }
+    </style>
+  </head>
+  <body>
+    <h1>Музыка: стенд</h1>
+    <p id="status">Звук выключен. Нажмите «Включить звук».</p>
+    <div class="row"><button id="unlock" type="button">Включить звук</button></div>
+    <div id="tracks"></div>
+    <div class="row">
+      <label><input id="duck" type="checkbox" /> приглушить под речь (−12 дБ)</label>
+      <label>износ кассеты <input id="wear" type="range" min="0" max="1" step="0.1" value="0" /> <span id="wearv">0</span></label>
+      <label><input id="loop" type="checkbox" /> по кругу</label>
+    </div>
+    <div class="row"><button id="measure" type="button">Отрендерить всё и измерить</button></div>
+    <div id="out"></div>
+    <script type="module" src="./music.ts"></script>
+  </body>
+</html>

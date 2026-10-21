@@ -1,5 +1,5 @@
 /**
- * Sound, synthesised with Web Audio (no audio files). Everything plays into buses — sfx, ambience, ui —
+ * Sound, synthesised with Web Audio (no audio files). Everything plays into buses — sfx, ambience, ui, music —
  * under one master, so the settings map to bus volumes. The context starts only after the player's first
  * click (browsers block sound before that) and pauses while the tab is hidden.
  */
@@ -7,7 +7,7 @@ import type { Output } from '../core/settings.ts';
 
 const dbToGain = (db: number) => Math.pow(10, db / 20);
 
-export type Bus = 'sfx' | 'ui' | 'ambience';
+export type Bus = 'sfx' | 'ui' | 'ambience' | 'music';
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -15,6 +15,8 @@ export class AudioEngine {
   private sfx!: GainNode;
   private ui!: GainNode;
   private ambience!: GainNode;
+  /** The band and the tape recorder: about 10 dB under the sound effects (engine/music.ts). */
+  private music!: GainNode;
   private white!: AudioBuffer;
   private mode: Output = 'headphones';
 
@@ -33,7 +35,7 @@ export class AudioEngine {
 
   bus(name: Bus): AudioNode | null {
     if (!this.ctx) return null;
-    return name === 'sfx' ? this.sfx : name === 'ui' ? this.ui : this.ambience;
+    return name === 'sfx' ? this.sfx : name === 'ui' ? this.ui : name === 'music' ? this.music : this.ambience;
   }
 
   /** White noise shared by the synthesized sounds. */
@@ -64,6 +66,7 @@ export class AudioEngine {
     this.sfx = bus(-3);
     this.ui = bus(-9);
     this.ambience = bus(-14);
+    this.music = bus(-13);
     this.white = this.noise(1, false);
     this.setOutput(output);
     this.roomTone();
