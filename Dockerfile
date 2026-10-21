@@ -9,6 +9,7 @@ RUN npm ci
 COPY apps/game apps/game
 COPY server server
 COPY prototypes prototypes
+COPY story story
 RUN npm run build
 
 # Runtime stage: production deps, compiled server, static client.

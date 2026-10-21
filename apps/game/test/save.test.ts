@@ -55,11 +55,19 @@ test('retiring a run crosses its soldier out once', () => {
   assert.deepEqual(retireRun({ ...once, run: s.run }).memory.names, ['Иванов']);
 });
 
+test('a schema 2 save that passed the workshop resumes after it', () => {
+  const old = JSON.stringify({ schema: 2, generation: 7, run: { name: 'Иванов', gender: 'm', stage: 'trained', hp: 2, trust: { norkin: 2 }, battle: null }, memory: { names: [] } });
+  const s = parseSave(old);
+  assert.equal(s?.run?.scene, 'amateur');
+  assert.equal(s?.run?.hp, 2);
+  assert.equal(s?.run?.trust.norkin, 2);
+});
+
 test('a schema 1 save migrates: the soldier keeps the name and gets three hits', () => {
   const old = JSON.stringify({ schema: 1, generation: 4, run: { name: 'Петрова', gender: 'f', stage: 'registered' }, memory: { names: ['Сырков'] } });
   const s = parseSave(old);
-  assert.equal(s?.schema, 2);
-  assert.deepEqual(s?.run, { name: 'Петрова', gender: 'f', stage: 'registered', hp: 3, trust: { norkin: 1 }, battle: null });
+  assert.equal(s?.schema, 3);
+  assert.deepEqual(s?.run, { name: 'Петрова', gender: 'f', scene: 'workshop', hp: 3, trust: { norkin: 1 }, flags: [], replies: {}, battle: null });
   assert.deepEqual(s?.memory.names, ['Сырков']);
 });
 

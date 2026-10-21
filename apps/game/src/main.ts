@@ -23,6 +23,7 @@ import { LINEUP_HOLES } from './render/tears.ts';
 import { CaptionPlate, type Cue } from './ui/caption.ts';
 import { BATTLES, type BattleId } from './content/battles.ts';
 import { WORKSHOP_END, workshopLines } from './content/workshop.ts';
+import { Runner } from './game/runner.ts';
 import { battleRange, isBattleId } from './stages/battle/range.ts';
 import { runBattle } from './stages/battle/run.ts';
 import type { BattleContext } from './stages/battle/types.ts';
@@ -199,7 +200,7 @@ async function workshop(w: Barracks, save: SaveFile): Promise<void> {
   // Training costs no hits; what Норкин learned about the player stays.
   run.trust.norkin = ctx.memory.trust;
   run.battle = null;
-  run.stage = 'trained';
+  run.scene = 'amateur';
   writeSave(w.store, save);
 
   glasses.view.visible = true;
@@ -210,13 +211,6 @@ async function workshop(w: Barracks, save: SaveFile): Promise<void> {
   scene.general.setPose('speak');
   await plate.type(WORKSHOP_END);
   scene.general.setPose('rest');
-}
-
-/** Links to the battles on their own, until the story reaches them. */
-function rangeLinks(): HTMLElement {
-  const ids: BattleId[] = ['b1', 'b2', 'b3'];
-  const links = ids.map((id) => h('a', { text: BATTLES[id].title, attrs: { href: `?battle=${id}` } }));
-  return h('p', { class: 'range-links' }, 'Бои пока можно сыграть отдельно, на полигоне: ', ...links.flatMap((a, i) => (i ? [' · ', a] : [a])), '.');
 }
 
 async function main(): Promise<void> {
@@ -287,18 +281,19 @@ async function main(): Promise<void> {
   await lightsOn(stage, dark, audio, reduced);
 
   plate.el.hidden = false;
-  plate.header('1.', 'ПОСТРОЕНИЕ');
-  if (save.run) await plate.register(save.memory.names, entryLine(save.run), false);
-  else save = await prologue(plate, scene, audio, save, store);
+  const debug = params.has('debug');
+  // The opening plays on the lineup picture; a soldier already past it goes straight to the barracks.
+  if (!save.run || save.run.scene === 'lineup' || save.run.scene === 'workshop') {
+    plate.header('1.', 'ПОСТРОЕНИЕ');
+    if (save.run) await plate.register(save.memory.names, entryLine(save.run), false);
+    else save = await prologue(plate, scene, audio, save, store);
+    if (save.run?.scene === 'workshop') await workshop({ stage, ui, audio, settings, reduced, plate, scene, glasses, dark, store, debug }, save);
+  }
+  if (!save.run) return;
 
-  const run = save.run;
-  if (!run) return;
-  if (run.stage === 'registered') await workshop({ stage, ui, audio, settings, reduced, plate, scene, glasses, dark, store, debug: params.has('debug') }, save);
-  await plate.end(
-    `${rank(run.gender)} ${run.name} ${run.gender === 'f' ? 'прошла' : 'прошёл'} воркшоп. Дальше будут самодеятельность, встреча Крыпоткина и первый цикл: это следующие вехи.`,
-    `${rank(run.gender)} ${run.name} уйдёт в книгу учёта зачёркнутым, и взять это имя снова будет нельзя.`,
-    rangeLinks(),
-  );
+  glasses.view.visible = false;
+  dark.visible = false;
+  await new Runner({ stage, ui, audio, settings, reduced, plate, store, debug }, save).play();
   writeSave(store, retireRun(save));
   location.reload();
 }

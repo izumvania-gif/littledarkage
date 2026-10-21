@@ -5,15 +5,13 @@
  * Bump SAVE_SCHEMA and add a migration in parseSave when the shape changes.
  */
 import { MAX_HP, type Battle } from './battle.ts';
+import { isSceneId, type SceneId } from '../content/scenes.ts';
 
-export const SAVE_SCHEMA = 2;
+export const SAVE_SCHEMA = 3;
 export const SAVE_KEY = 'lda.save';
 export const BACKUP_KEY = 'lda.save.bak';
 
 export type Gender = 'm' | 'f';
-
-/** How far the story got: registered at the lineup, then through the workshop's training battle. */
-export type Story = 'registered' | 'trained';
 
 /** What a battle carries besides the field; saved with it. */
 export interface BattleMemory {
@@ -37,11 +35,16 @@ export interface BattleSave {
 export interface RunState {
   name: string;
   gender: Gender;
-  stage: Story;
+  /** The scene the player is in; it plays from its start on load. */
+  scene: SceneId;
   /** The soldier's one pool of hits for the whole game, in any seat. */
   hp: number;
   /** Named soldiers' trust in the player, 0..3. */
   trust: Record<string, number>;
+  /** What the player did and chose, as the script names it («named_self», «rumour_public»…). */
+  flags: string[];
+  /** The player's replies home, by letter number; they never arrive, and the finale reads them out. */
+  replies: Record<string, string>;
   battle: BattleSave | null;
 }
 
@@ -66,7 +69,7 @@ export function freshSave(): SaveFile {
 
 /** A new soldier at the lineup. */
 export function newRun(name: string, gender: Gender): RunState {
-  return { name, gender, stage: 'registered', hp: MAX_HP, trust: { norkin: 1 }, battle: null };
+  return { name, gender, scene: 'workshop', hp: MAX_HP, trust: { norkin: 1 }, flags: [], replies: {}, battle: null };
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
@@ -83,11 +86,15 @@ function parseBattle(v: unknown): BattleSave | null {
 /** A run of any schema, migrated to the current one; a battle that doesn't load restarts from its start (null). */
 function parseRun(v: unknown): RunState | null {
   if (!isObject(v) || typeof v.name !== 'string' || (v.gender !== 'm' && v.gender !== 'f')) return null;
-  const stage: Story = v.stage === 'trained' ? 'trained' : 'registered';
+  // Schemas 1–2 kept a story stage instead of a scene: registered → the workshop, trained → after it.
+  const scene: SceneId = isSceneId(v.scene) ? v.scene : v.stage === 'trained' ? 'amateur' : 'workshop';
   const hp = typeof v.hp === 'number' && v.hp >= 0 && v.hp <= MAX_HP ? v.hp : MAX_HP;
   const trust: Record<string, number> = { norkin: 1 };
   if (isObject(v.trust)) for (const [k, t] of Object.entries(v.trust)) if (typeof t === 'number') trust[k] = Math.max(0, Math.min(3, t));
-  return { name: v.name, gender: v.gender, stage, hp, trust, battle: parseBattle(v.battle) };
+  const flags = Array.isArray(v.flags) ? v.flags.filter((f): f is string => typeof f === 'string') : [];
+  const replies: Record<string, string> = {};
+  if (isObject(v.replies)) for (const [k, r] of Object.entries(v.replies)) if (typeof r === 'string') replies[k] = r;
+  return { name: v.name, gender: v.gender, scene, hp, trust, flags, replies, battle: parseBattle(v.battle) };
 }
 
 export function parseSave(raw: string | null): SaveFile | null {
@@ -99,8 +106,8 @@ export function parseSave(raw: string | null): SaveFile | null {
     return null;
   }
   const s = data as { schema?: unknown; generation?: unknown; run?: unknown; memory?: { names?: unknown } };
-  // Schema 1 had runs without hits, trust or battles; parseRun fills them in.
-  if (!s || (s.schema !== 1 && s.schema !== SAVE_SCHEMA) || typeof s.generation !== 'number') return null;
+  // Older schemas had runs without hits, trust, battles or scenes; parseRun fills them in.
+  if (!s || typeof s.schema !== 'number' || s.schema < 1 || s.schema > SAVE_SCHEMA || typeof s.generation !== 'number') return null;
   const names = Array.isArray(s.memory?.names) ? s.memory.names.filter((n): n is string => typeof n === 'string') : [];
   return { schema: SAVE_SCHEMA, generation: s.generation, run: parseRun(s.run), memory: { names } };
 }

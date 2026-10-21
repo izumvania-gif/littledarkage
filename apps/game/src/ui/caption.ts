@@ -9,7 +9,7 @@ import { PARAGRAPH_PAUSE, PAUSE_AFTER, TYPE_CPS } from '../content/speech.ts';
 import type { AudioEngine } from '../engine/audio.ts';
 import { CAPTION_TOP, REF_H, REF_W } from '../render/palette.ts';
 import type { Fit } from '../render/stage.ts';
-import { h, isTyping, wait } from './dom.ts';
+import { h, isTyping, nextPress, wait } from './dom.ts';
 
 export interface Cue {
   /** Fires once the typed text reaches the end of this phrase. */
@@ -109,6 +109,76 @@ export class CaptionPlate {
       this.el.removeEventListener('click', onClick);
       this.hint.hidden = true;
     }
+  }
+
+  /**
+   * One line of the script. The general types on his machine; everyone else's words appear at once in their
+   * own hand; narration has no name. Resolves when the player moves on (Space, Enter or a click).
+   */
+  async line(l: { speaker: string | null; style: 'type' | 'hand' | 'serif' | 'mono' | 'narration'; text: string }): Promise<void> {
+    if (l.style === 'type') {
+      await this.type(l.text, [], l.speaker ?? 'Генерал');
+      return;
+    }
+    const text = h('p', { class: `said said-${l.style}`, text: l.text });
+    this.body.replaceChildren(...(l.speaker ? [h('p', { class: 'speaker', text: l.speaker })] : []), text);
+    this.live.textContent = l.speaker ? `${l.speaker}: ${l.text}` : l.text;
+    this.hint.hidden = false;
+    // A beat before a press counts, so a held key doesn't skip lines unread.
+    await wait(this.reducedMotion ? 120 : 220);
+    await nextPress(ADVANCE, this.el);
+    this.hint.hidden = true;
+  }
+
+  /** A line shown without waiting for the player (a command during a duty): it stays until the next one. */
+  show(l: { speaker: string | null; style: 'type' | 'hand' | 'serif' | 'mono' | 'narration'; text: string }): void {
+    const text = h('p', { class: `said said-${l.style === 'type' ? 'mono' : l.style}`, text: l.text });
+    this.body.replaceChildren(...(l.speaker ? [h('p', { class: 'speaker', text: l.speaker })] : []), text);
+    this.live.textContent = l.speaker ? `${l.speaker}: ${l.text}` : l.text;
+    if (l.style === 'type') this.audio.bell();
+  }
+
+  /** The player's choice: numbered buttons; 1–9 pick, arrows move, Enter takes the focused one. */
+  choose(options: readonly string[]): Promise<number> {
+    return new Promise((resolve) => {
+      const buttons = options.map((text, i) => h('button', { class: 'choice', attrs: { type: 'button', 'data-n': String(i + 1) } }, h('span', { class: 'choice-n', text: `${i + 1}` }), ' ', text));
+      const list = h('div', { class: 'choices', attrs: { role: 'group', 'aria-label': 'Ваш ответ' } }, ...buttons);
+      this.body.replaceChildren(list);
+      this.live.textContent = `Ваш ответ: ${options.map((o, i) => `${i + 1}. ${o}`).join('; ')}`;
+      const done = (i: number) => {
+        window.removeEventListener('keydown', onKey);
+        resolve(i);
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.repeat || isTyping(e.target)) return;
+        const digit = /^(Digit|Numpad)([1-9])$/.exec(e.code);
+        if (digit) {
+          const i = Number(digit[2]) - 1;
+          if (i < buttons.length) {
+            e.preventDefault();
+            done(i);
+          }
+          return;
+        }
+        const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        if (e.code === 'ArrowDown' || e.code === 'ArrowRight') {
+          e.preventDefault();
+          buttons[(at + 1) % buttons.length]?.focus();
+        } else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') {
+          e.preventDefault();
+          buttons[(at - 1 + buttons.length) % buttons.length]?.focus();
+        }
+      };
+      buttons.forEach((b, i) => b.addEventListener('click', () => done(i)));
+      window.addEventListener('keydown', onKey);
+      buttons[0]?.focus();
+    });
+  }
+
+  /** Clears the body (between scenes). */
+  clear(): void {
+    this.body.replaceChildren();
+    this.live.textContent = '';
   }
 
   /** A recruit shouting his name from the line. */
