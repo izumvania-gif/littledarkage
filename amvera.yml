@@ -1,0 +1,12 @@
+# Amvera deploy config: build from the Dockerfile. The /data mount is reserved for the online layer (not used yet).
+meta:
+  environment: docker
+  toolchain:
+    name: docker
+    version: latest
+build:
+  dockerfile: Dockerfile
+  skip: false
+run:
+  persistenceMount: /data
+  containerPort: 3000
