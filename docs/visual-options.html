@@ -1,0 +1,486 @@
+<title>Эскизы «Тёмного века»</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bad+Script&family=PT+Mono&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Rubik+Mono+One&display=swap">
+<style>
+/* Layout: a sketchbook of four numbered style options; each = text, three 4:3 plates (barracks, battle, letter), palette, pros/cons. One paper look by choice. */
+:root {
+  --paper: #ece6d8;
+  --paper-2: #e3dbc8;
+  --ink: #23201c;
+  --muted: #6a6155;
+  --rule: #cbbfa6;
+  --red: #b2342a;
+  --serif: "PT Serif", Georgia, "Times New Roman", serif;
+  --mono: "PT Mono", "Courier New", monospace;
+  --display: "Rubik Mono One", "Arial Black", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 36px 72px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 64px; }
+header { display: grid; gap: 14px; max-width: 760px; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.1; margin: 0; text-wrap: balance; font-weight: 700; }
+.lead { margin: 0; font-size: 18px; max-width: 64ch; }
+section.opt { display: grid; gap: 18px; border-top: 2px solid var(--ink); padding-top: 18px; }
+.opt-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: baseline; }
+.num { font-family: var(--display); font-size: 34px; line-height: 1; color: var(--red); grid-row: span 2; }
+h2 { margin: 0; font-size: 28px; line-height: 1.15; text-wrap: balance; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.kicker { margin: 0; font-family: var(--mono); font-size: 14px; color: var(--muted); }
+.badge { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--paper); background: var(--red); padding: 2px 8px; position: relative; top: -3px; }
+.about { margin: 0; max-width: 70ch; }
+.plates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+figure { margin: 0; display: grid; gap: 6px; min-width: 0; }
+canvas { width: 100%; height: auto; aspect-ratio: 4 / 3; display: block; background: var(--paper-2); border: 1px solid var(--rule); }
+figcaption { font-family: var(--mono); font-size: 13px; line-height: 1.4; color: var(--muted); }
+.meta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.meta h3 { margin: 0 0 6px; font-family: var(--mono); font-size: 13px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.meta p { margin: 0; font-size: 16px; }
+.swatches { display: grid; gap: 6px; }
+.sw { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; }
+.sw i { width: 22px; height: 22px; flex: none; border: 1px solid rgba(35, 32, 28, .25); }
+.verdict { border: 2px solid var(--ink); padding: 18px 20px; display: grid; gap: 8px; max-width: 760px; background: var(--paper-2); }
+.verdict h2 { font-size: 22px; }
+.verdict p { margin: 0; }
+footer { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+footer a, .verdict a { color: var(--ink); }
+a:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+@media (max-width: 860px) {
+  .plates { grid-template-columns: 1fr; }
+  .meta { grid-template-columns: 1fr; gap: 16px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Короткий тёмный век · визуальный стиль</div>
+    <h1>Четыре варианта, как может выглядеть игра</h1>
+    <p class="lead">Одни и те же три сцены в каждом стиле: казарма, где тащат диван; бой глазами координатора, когда поле видно только во вспышке красной лампы; письмо-треугольник из дома. Эскизы нарисованы кодом прямо на странице. Это пробы настроения, а не финальная графика.</p>
+  </header>
+
+  <section class="opt" id="tetrad">
+    <div class="opt-head">
+      <div class="num">1</div>
+      <h2>«Тетрадь» <span class="badge">рекомендую</span></h2>
+      <p class="kicker">Карандаш и красная паста в школьной тетради в клетку</p>
+    </div>
+    <p class="about">Игра как дневник автора. Клетка тетради и есть поле боя. Темнота туннеля — карандашная штриховка, та самая из наряда «закрасить листочки», а твари — места, которые остались незаштрихованными. Красная паста — вспышки лампы, пометки генерала, крестики на ловушках. Плакаты и письма вклеены в тетрадь.</p>
+    <div class="plates">
+      <figure><canvas data-style="nb" data-scene="barracks" role="img" aria-label="Карандашный рисунок в тетради: нары, вклеенный плакат с Крыпоткиным, магнитофон, две крысы несут диван, красной пастой приписано: диван — два шага влево"></canvas><figcaption>Казарма: «диван — два шага влево!»</figcaption></figure>
+      <figure><canvas data-style="nb" data-scene="battle" role="img" aria-label="Поле боя на клетках тетради: в темноте, заштрихованной карандашом, во вспышке проступают белые незаштрихованные твари и крысы с повязками на глазах"></canvas><figcaption>Бой: поле видно только во вспышке</figcaption></figure>
+      <figure><canvas data-style="nb" data-scene="letter" role="img" aria-label="Вклеенное в тетрадь письмо-треугольник и развёрнутый лист с детским письмом"></canvas><figcaption>Письмо 2: треугольник из дома</figcaption></figure>
+    </div>
+    <div class="meta">
+      <div><h3>Палитра</h3><div class="swatches">
+        <div class="sw"><i style="background:#f4f0e5"></i>бумага</div>
+        <div class="sw"><i style="background:#9fbcd4"></i>клетка</div>
+        <div class="sw"><i style="background:#373735"></i>графит</div>
+        <div class="sw"><i style="background:#c8312b"></i>красная паста</div>
+        <div class="sw"><i style="background:#2f3a66"></i>чернила писем</div>
+      </div></div>
+      <div><h3>Плюсы</h3><p>Самый личный вариант, ровно про то, чтобы передать мысли и чувства. Бумажный код работает сам собой. Всё рисуется кодом в 2D, производство быстрое. Советская школьная тетрадь узнаваема, но не политична.</p></div>
+      <div><h3>Минусы</h3><p>Камерно, армии меньше. Многое держится на качестве линий, их придётся долго доводить.</p></div>
+    </div>
+  </section>
+
+  <section class="opt" id="rosta">
+    <div class="opt-head">
+      <div class="num">2</div>
+      <h2>«Окна РОСТА»</h2>
+      <p class="kicker">Агитплакат 1920-х: плоские фигуры, красный, чёрный, кремовый</p>
+    </div>
+    <p class="about">Как Окна РОСТА Маяковского и Черемных: нумерованные кадры с подписями, рубленые буквы, диагонали, грубая печать с чуть съехавшим красным. Казарма — плакат с подписью, Крыпоткин смотрит со стен, бой — чёрный лист, по которому красными клиньями бьют вспышки.</p>
+    <div class="plates">
+      <figure><canvas data-style="rosta" data-scene="barracks" role="img" aria-label="Плоский агитплакат: чёрные силуэты крыс несут красный диван, на стене плакат с бородатым Крыпоткиным, подпись: диван — на два шага влево"></canvas><figcaption>Казарма: кадр 1 с подписью</figcaption></figure>
+      <figure><canvas data-style="rosta" data-scene="battle" role="img" aria-label="Чёрное поле боя, красные клинья вспышки, кремовые твари и охристые крысы с повязками"></canvas><figcaption>Бой: поле видно только во вспышке</figcaption></figure>
+      <figure><canvas data-style="rosta" data-scene="letter" role="img" aria-label="Письмо-треугольник на красном круге с чёрными лучами, подпись: письмо с родины"></canvas><figcaption>Письмо: кадр 3 с подписью</figcaption></figure>
+    </div>
+    <div class="meta">
+      <div><h3>Палитра</h3><div class="swatches">
+        <div class="sw"><i style="background:#eadfc6"></i>кремовый</div>
+        <div class="sw"><i style="background:#1c1a18"></i>чёрный</div>
+        <div class="sw"><i style="background:#c62f24"></i>красный</div>
+        <div class="sw"><i style="background:#c99a3b"></i>охра</div>
+      </div></div>
+      <div><h3>Плюсы</h3><p>Сразу узнаваемая советская эстетика. Смешно в первом цикле. Дёшево: плоские формы и крупные подписи.</p></div>
+      <div><h3>Минусы</h3><p>Громко. Третий цикл трудно сделать по-настоящему жутким. Политическое прочтение сильнее всего, а мы решили держаться Кропоткина.</p></div>
+    </div>
+  </section>
+
+  <section class="opt" id="perekladka">
+    <div class="opt-head">
+      <div class="num">3</div>
+      <h2>«Перекладка»</h2>
+      <p class="kicker">Бумажная перекладная анимация, туман и плёночное зерно</p>
+    </div>
+    <p class="about">Как у Норштейна в «Ёжике в тумане» и «Сказке сказок», где есть и война, и проводы на фронт, и письма. Крысы и предметы вырезаны из бумаги, сцена собрана из слоёв с мягкими тенями. Бой — туман, в котором во вспышке проступают бледные силуэты.</p>
+    <div class="plates">
+      <figure><canvas data-style="cut" data-scene="barracks" role="img" aria-label="Сумрачная казарма из бумажных вырезок под лампой: нары, плакат, магнитофон, крысы с диваном, лёгкий туман у пола"></canvas><figcaption>Казарма под лампой</figcaption></figure>
+      <figure><canvas data-style="cut" data-scene="battle" role="img" aria-label="Туман над полем боя, во вспышке красной лампы проступают светлые бумажные твари и тёмные вырезанные крысы"></canvas><figcaption>Бой: поле видно только во вспышке</figcaption></figure>
+      <figure><canvas data-style="cut" data-scene="letter" role="img" aria-label="Бумажный треугольник и развёрнутое письмо на тёмном столе под лампой"></canvas><figcaption>Письмо 2 на столе</figcaption></figure>
+    </div>
+    <div class="meta">
+      <div><h3>Палитра</h3><div class="swatches">
+        <div class="sw"><i style="background:#4c5560"></i>сумерки</div>
+        <div class="sw"><i style="background:#d8cbb0"></i>бумага</div>
+        <div class="sw"><i style="background:#6b5440"></i>умбра</div>
+        <div class="sw"><i style="background:#26221e"></i>вырезка</div>
+        <div class="sw"><i style="background:#b8463a"></i>лампа</div>
+      </div></div>
+      <div><h3>Плюсы</h3><p>Самый эмоциональный. Бумажный код ложится сам. Советское без политики.</p></div>
+      <div><h3>Минусы</h3><p>Сложнее всего сделать хорошо. Нужны аккуратно нарисованные вырезки, кодом их не заменить.</p></div>
+    </div>
+  </section>
+
+  <section class="opt" id="eferon">
+    <div class="opt-head">
+      <div class="num">4</div>
+      <h2>«Эферон»</h2>
+      <p class="kicker">Низкополигональное 3D, пять цветов и упорядоченный дизеринг</p>
+    </div>
+    <p class="about">Тот же рендерер, что в Эфероне, только в советских тонах: сажа, охра, кремовый, красный. Эскиз плоский, в игре сцена будет объёмной, с камерой над казармой.</p>
+    <div class="plates">
+      <figure><canvas data-style="dither" data-scene="barracks" role="img" aria-label="Пиксельная казарма в пяти цветах с дизерингом под тёплой лампой"></canvas><figcaption>Казарма в пяти цветах</figcaption></figure>
+      <figure><canvas data-style="dither" data-scene="battle" role="img" aria-label="Пиксельное поле боя: во вспышке красной лампы проступают твари и крысы"></canvas><figcaption>Бой: поле видно только во вспышке</figcaption></figure>
+      <figure><canvas data-style="dither" data-scene="letter" role="img" aria-label="Пиксельное письмо-треугольник под лампой"></canvas><figcaption>Письмо в пяти цветах</figcaption></figure>
+    </div>
+    <div class="meta">
+      <div><h3>Палитра</h3><div class="swatches">
+        <div class="sw"><i style="background:#1b1a17"></i>сажа</div>
+        <div class="sw"><i style="background:#5a4128"></i>тёмная охра</div>
+        <div class="sw"><i style="background:#a07a3e"></i>охра</div>
+        <div class="sw"><i style="background:#ddd0b3"></i>кремовый</div>
+        <div class="sw"><i style="background:#a8322b"></i>красный</div>
+      </div></div>
+      <div><h3>Плюсы</h3><p>Рендерер и опыт уже есть. У казармы появляется объём.</p></div>
+      <div><h3>Минусы</h3><p>Будет похоже на Эферон. Модели крыс и казармы — больше работы. Бумажный код слабее, потому что всё объёмное.</p></div>
+    </div>
+  </section>
+
+  <section class="verdict">
+    <h2>Что я бы выбрал</h2>
+    <p>«Тетрадь» как основу. Плакаты в духе Окон РОСТА живут внутри неё, вклейками на стене казармы, как на первом эскизе. Второй выбор — «Перекладка», если важнее всего настроение.</p>
+    <p>Описание всех вариантов есть в концепте, в подразделе «Визуальный стиль: варианты»: <a href="https://github.com/izumvania-gif/littledarkage/blob/main/docs/concept.md">docs/concept.md</a>.</p>
+  </section>
+
+  <footer>Лампа на эскизах боя мигает раз в две секунды, как в игре. При включённом «уменьшении движения» она горит ровно.</footer>
+</div>
+
+<script>
+(() => {
+  const W = 480, H = 360;
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function mk(w, h, s) { const c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s); const x = c.getContext('2d'); x.setTransform(s, 0, 0, s, 0, 0); return { c, x }; }
+  function T(p, x, y, a = 0, s = 1, flip = 1) { const m = new DOMMatrix().translate(x, y).rotate(a * 180 / Math.PI).scale(s * flip, s); const q = new Path2D(); q.addPath(p, m); return q; }
+
+  // ---------- shared geometry (all closed shapes wound the same way) ----------
+  const RAT_TOP = (() => { const p = new Path2D(); p.ellipse(0, 0, 9, 6, 0, 0, Math.PI * 2, true); p.moveTo(17, 0); p.quadraticCurveTo(12, -5.2, 6, -4.6); p.quadraticCurveTo(3, 0, 6, 4.6); p.quadraticCurveTo(12, 5.2, 17, 0); p.closePath(); p.moveTo(9.1, -5.6); p.arc(6.5, -5.6, 2.6, 0, Math.PI * 2, true); p.moveTo(9.1, 5.6); p.arc(6.5, 5.6, 2.6, 0, Math.PI * 2, true); return p; })();
+  const RAT_TOP_TAIL = (() => { const p = new Path2D(); p.moveTo(-8.5, 0); p.quadraticCurveTo(-18, 7, -26, -1); return p; })();
+  const BLIND = (() => { const p = new Path2D(); p.rect(9, -5.2, 2.8, 10.4); p.moveTo(9.4, -4.8); p.lineTo(4.2, -8.8); p.lineTo(6.6, -4.2); p.closePath(); return p; })();
+  const RAT_UP = (() => { const p = new Path2D();
+    p.moveTo(-17, 0); p.lineTo(17, 0); p.lineTo(12, -56); p.quadraticCurveTo(0, -66, -12, -56); p.closePath();
+    p.moveTo(-9, -60); p.quadraticCurveTo(6, -60, 24, -73); p.quadraticCurveTo(6, -88, -7, -86); p.quadraticCurveTo(-15, -76, -9, -60); p.closePath();
+    p.moveTo(3, -90); p.arc(-4, -90, 7, 0, Math.PI * 2, true);
+    p.moveTo(-13, -84); p.lineTo(7, -87); p.lineTo(1, -95); p.lineTo(-11, -93); p.closePath();
+    p.moveTo(-1, 1); p.ellipse(-8, 1, 7, 3, 0, 0, Math.PI * 2, true); p.moveTo(17, 1); p.ellipse(9, 1, 8, 3, 0, 0, Math.PI * 2, true);
+    return p; })();
+  const RAT_UP_TAIL = (() => { const p = new Path2D(); p.moveTo(-14, -6); p.quadraticCurveTo(-34, 0, -44, -16); return p; })();
+  const RAT_UP_EYE = (() => { const p = new Path2D(); p.arc(10, -76, 1.8, 0, Math.PI * 2); return p; })();
+  const KR_HEAD = (() => { const p = new Path2D(); p.moveTo(18, 62); p.quadraticCurveTo(44, 62, 80, 46); p.quadraticCurveTo(50, 20, 28, 22); p.quadraticCurveTo(10, 34, 18, 62); p.closePath(); p.moveTo(36, 18); p.arc(26, 18, 10, 0, Math.PI * 2, true); return p; })();
+  const KR_BEARD = (() => { const p = new Path2D(); p.moveTo(22, 52); p.quadraticCurveTo(18, 84, 32, 88); p.quadraticCurveTo(42, 100, 52, 90); p.quadraticCurveTo(62, 86, 60, 66); p.quadraticCurveTo(62, 58, 56, 54); p.quadraticCurveTo(40, 60, 22, 52); p.closePath(); return p; })();
+  const KR_GLASS = (() => { const p = new Path2D(); p.moveTo(58, 38); p.arc(52, 38, 6, 0, Math.PI * 2); p.moveTo(46, 37); p.lineTo(32, 31); return p; })();
+  const KR_WHISK = (() => { const p = new Path2D(); p.moveTo(72, 49); p.lineTo(88, 44); p.moveTo(72, 50); p.lineTo(88, 51); p.moveTo(71, 51); p.lineTo(85, 57); return p; })();
+  const SOFA = (() => { const p = new Path2D(); p.rect(0, 0, 130, 24); p.rect(0, 22, 130, 20); p.rect(-8, 10, 14, 34); p.rect(124, 10, 14, 34); return p; })();
+  function bunkFrame(bx, by, w, h) { const p = new Path2D(); p.rect(bx, by, 6, h); p.rect(bx + w - 6, by, 6, h); p.rect(bx, by + h * .22, w, 9); p.rect(bx, by + h * .68, w, 9); p.rect(bx, by - 2, w, 5); return p; }
+  function bunkMats(bx, by, w, h) { const p = new Path2D(); p.rect(bx + 6, by + h * .22 - 12, w - 12, 12); p.rect(bx + 6, by + h * .68 - 12, w - 12, 12); return p; }
+  const BUNK = bunkFrame(24, 150, 150, 154), MATS = bunkMats(24, 150, 150, 154);
+  const TUMB = (() => { const p = new Path2D(); p.rect(196, 264, 44, 40); return p; })();
+  const REC = (() => { const p = new Path2D(); p.rect(190, 238, 56, 26); p.moveTo(206, 232); p.lineTo(230, 232); p.lineTo(230, 238); p.lineTo(206, 238); p.closePath(); return p; })();
+  const REELS = (() => { const p = new Path2D(); p.moveTo(211, 251); p.arc(204, 251, 7, 0, Math.PI * 2); p.moveTo(239, 251); p.arc(232, 251, 7, 0, Math.PI * 2); return p; })();
+  const SHADE = (() => { const p = new Path2D(); p.moveTo(340, 40); p.lineTo(360, 40); p.lineTo(372, 56); p.lineTo(328, 56); p.closePath(); return p; })();
+  const BULB = (() => { const p = new Path2D(); p.arc(350, 61, 6, 0, Math.PI * 2); return p; })();
+  const CORD = (() => { const p = new Path2D(); p.moveTo(350, 0); p.lineTo(350, 40); return p; })();
+  const SOFA_AT = T(SOFA, 292, 184, -.06);
+  const CARRIERS = [[300, 304, .74, 1], [436, 304, .74, -1], [150, 304, .7, 1]];
+
+  const G = { x: 105, y: 15, cell: 30, n: 9 };
+  const cc = (c, r) => [G.x + G.cell * (c + .5), G.y + G.cell * (r + .5)];
+  const WEAK = [[2, 2], [5, 1], [6, 4], [1, 5], [3, 0], [8, 3]];
+  const STRONG = [[4, 3]];
+  const STRIKERS = [{ c: 3, r: 5, a: -Math.PI / 2 }, { c: 5, r: 7, a: -Math.PI * .62 }, { c: 7, r: 6, a: -Math.PI / 2 }];
+  const COORDS = [[150, 330], [330, 330], [400, 330]];
+  const SECRET = [7, 2], TRAP = [2, 7], LAMP = [240, 326];
+  function sheetPath(cx, cy, seed, s = 1) { const r = rng(seed); const rot = (r() - .5) * .7; const pts = [[-10, -12], [0, -13], [10, -11], [12, 0], [11, 12], [0, 11], [-11, 10], [-12, 0]].map(([x, y]) => [x + (r() - .5) * 5, y + (r() - .5) * 5]); const p = new Path2D(); pts.forEach(([x, y], i) => { const X = cx + s * (x * Math.cos(rot) - y * Math.sin(rot)), Y = cy + s * (x * Math.sin(rot) + y * Math.cos(rot)); if (i) p.lineTo(X, Y); else p.moveTo(X, Y); }); p.closePath(); return p; }
+  function tri(cx, cy, s) { const p = new Path2D(); p.moveTo(cx - s, cy - s * .6); p.lineTo(cx + s, cy - s * .6); p.lineTo(cx, cy + s * .8); p.closePath(); return p; }
+  function xMark(cx, cy, s) { const p = new Path2D(); p.moveTo(cx - s, cy - s); p.lineTo(cx + s, cy + s); p.moveTo(cx + s, cy - s); p.lineTo(cx - s, cy + s); return p; }
+  const SHEETS = WEAK.map(([c, r], i) => sheetPath(...cc(c, r), 101 + i));
+  const STRONGS = STRONG.map(([c, r], i) => sheetPath(...cc(c, r), 201 + i, 1.15));
+  const SEC = tri(...cc(...SECRET), 5.5);
+  const FIELD = (() => { const p = new Path2D(); p.rect(G.x, G.y, G.cell * G.n, G.cell * G.n); return p; })();
+  const CELLS = (() => { const p = new Path2D(); for (let i = 0; i <= G.n; i++) { p.moveTo(G.x + i * G.cell, G.y); p.lineTo(G.x + i * G.cell, G.y + G.cell * G.n); p.moveTo(G.x, G.y + i * G.cell); p.lineTo(G.x + G.cell * G.n, G.y + i * G.cell); } return p; })();
+  const strikerPaths = () => STRIKERS.map(s => { const [px, py] = cc(s.c, s.r); return { body: T(RAT_TOP, px, py, s.a, 1.15), tail: T(RAT_TOP_TAIL, px, py, s.a, 1.15), blind: T(BLIND, px, py, s.a, 1.15) }; });
+  const coordPaths = () => COORDS.map(([px, py]) => ({ body: T(RAT_TOP, px, py, -Math.PI / 2, 1.3), tail: T(RAT_TOP_TAIL, px, py, -Math.PI / 2, 1.3) }));
+
+  const LETTER_LINES = ['Папочка, я очень скучаю.', 'Мамочка говорит, что ты делаешь', 'очень важное дело и я должен', 'гордиться тобой. Расскажи чем', 'ты занят, ну пожалуйста. Мамочка', 'очень грустит и плачет ночами.', 'Соседка нам помогает чем может,', 'да дедушка захаживает иногда.', 'Возвращайся, пожалуйста, мы с', 'тобой в мячик поиграем. Я буду', 'самым лучшим сыном, ты только', 'возвращайся!'];
+  const HAND = '"Bad Script", "Segoe Script", cursive';
+  const MONO = '"PT Mono", "Courier New", monospace';
+  const DISPLAY = '"Rubik Mono One", "Arial Black", sans-serif';
+
+  function triangleLetter(x, o) {
+    const p = new Path2D(); p.moveTo(-110, -60); p.lineTo(110, -60); p.lineTo(0, 70); p.closePath();
+    o.fill(p);
+    x.save(); x.strokeStyle = o.fold; x.lineWidth = 1; x.beginPath(); x.moveTo(-62, -60); x.lineTo(0, 12); x.lineTo(62, -60); x.moveTo(-26, -18); x.lineTo(26, -18); x.stroke(); x.restore();
+    o.edge(p);
+    x.save(); x.fillStyle = o.ink; x.font = `15px ${HAND}`; x.textAlign = 'center';
+    x.fillText('Полевая почта', -6, -38); x.fillText('№ 4817', -10, -4); x.font = `13px ${HAND}`; x.fillText('Норкину А.', 0, 16); x.restore();
+    x.save(); x.translate(70, -36); x.rotate(.22); x.strokeStyle = o.stamp; x.fillStyle = o.stamp; x.lineWidth = 1.6; x.beginPath(); x.arc(0, 0, 17, 0, Math.PI * 2); x.stroke(); x.lineWidth = .8; x.beginPath(); x.arc(0, 0, 13, 0, Math.PI * 2); x.stroke(); x.font = `6.5px ${MONO}`; x.textAlign = 'center'; x.fillText('ПОЛЕВАЯ', 0, -1); x.fillText('ПОЧТА', 0, 7); x.restore();
+  }
+  function sheetText(x, color, x0, y0, size = 15, step = 21) { x.save(); x.fillStyle = color; x.font = `${size}px ${HAND}`; LETTER_LINES.forEach((l, i) => x.fillText(l, x0, y0 + i * step)); x.restore(); }
+
+  // ---------- 1. notebook ----------
+  const INK = '55,55,53';
+  function pencil(x, p, a = .8, w = 1.1) { x.save(); x.lineJoin = 'round'; x.lineCap = 'round'; x.strokeStyle = `rgba(${INK},${a})`; x.lineWidth = w; x.stroke(p); x.translate(.7, -.5); x.strokeStyle = `rgba(${INK},${a * .45})`; x.lineWidth = w * .7; x.stroke(p); x.restore(); }
+  function hatch(x, clip, o = {}) { const { angle = .8, gap = 4, alpha = .5, color = INK, width = .9, seed = 1, rule = 'nonzero', box = [0, 0, W, H] } = o; const r = rng(seed); x.save(); if (clip) x.clip(clip, rule); x.strokeStyle = `rgba(${color},${alpha})`; x.lineWidth = width; x.lineCap = 'round'; const [bx, by, bw, bh] = box, cx = bx + bw / 2, cy = by + bh / 2, R = Math.hypot(bw, bh) / 2 + 6; x.translate(cx, cy); x.rotate(angle); x.beginPath(); for (let y = -R; y < R; y += gap) { const j = (r() - .5) * gap * .45; x.moveTo(-R + r() * 8, y + j); x.quadraticCurveTo(0, y + j + (r() - .5) * 1.8, R - r() * 8, y + j + (r() - .5) * 1.4); } x.stroke(); x.restore(); }
+  function nbPaper(x) { x.fillStyle = '#f4f0e5'; x.fillRect(0, 0, W, H); x.strokeStyle = 'rgba(120,160,195,.42)'; x.lineWidth = .6; x.beginPath(); for (let i = 0; i <= W; i += 15) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); } for (let j = 0; j <= H; j += 15) { x.moveTo(0, j + .5); x.lineTo(W, j + .5); } x.stroke(); x.strokeStyle = 'rgba(205,95,85,.7)'; x.lineWidth = 1; x.beginPath(); x.moveTo(452.5, 0); x.lineTo(452.5, H); x.stroke(); }
+  function tape(x, cx, cy, a) { x.save(); x.translate(cx, cy); x.rotate(a); x.fillStyle = 'rgba(224,212,172,.78)'; x.fillRect(-17, -6, 34, 12); x.strokeStyle = 'rgba(150,135,100,.35)'; x.lineWidth = .6; x.strokeRect(-17, -6, 34, 12); x.restore(); }
+  function redPen(x, p, a = .9, w = 1.6) { x.save(); x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = `rgba(200,49,43,${a})`; x.lineWidth = w; x.stroke(p); x.restore(); }
+  function poster(x, px, py, pw, ph, c) {
+    x.save(); x.fillStyle = c.paper; x.fillRect(px, py, pw, ph);
+    const ix = px + 5, iy = py + 5, iw = pw - 10, ih = ph - 34; x.fillStyle = c.red; x.fillRect(ix + (c.mis || 0), iy + (c.mis || 0) * .6, iw, ih);
+    const s = Math.min(iw / 80, ih / 100); x.translate(ix + (iw - 80 * s) / 2, iy + (ih - 100 * s) / 2 + 4); x.scale(s, s);
+    x.fillStyle = c.ink; x.fill(KR_HEAD); x.fillStyle = c.paper; x.fill(KR_BEARD); x.strokeStyle = c.paper; x.lineWidth = 2.2; x.stroke(KR_GLASS); x.strokeStyle = c.ink; x.lineWidth = 1.2; x.stroke(KR_WHISK);
+    x.restore();
+    x.save(); x.fillStyle = c.ink; x.font = `7px ${DISPLAY}`; x.textAlign = 'center'; x.fillText('СИЛА — В', px + pw / 2, py + ph - 17); x.fillText('СПЛОЧЁННОСТИ', px + pw / 2, py + ph - 7); x.restore();
+    if (c.border) { x.save(); x.strokeStyle = c.ink; x.lineWidth = c.border; x.strokeRect(px, py, pw, ph); x.restore(); }
+  }
+  function nbRat(x, px, py, s, flip, seed) { const b = T(RAT_UP, px, py, 0, s, flip); hatch(x, b, { angle: .9, gap: 2.2, alpha: .7, seed }); hatch(x, b, { angle: -.6, gap: 3.4, alpha: .42, seed: seed + 1 }); pencil(x, b, .9); pencil(x, T(RAT_UP_TAIL, px, py, 0, s, flip), .85, 1.5); x.fillStyle = '#f4f0e5'; x.fill(T(RAT_UP_EYE, px, py, 0, s, flip)); }
+  function nbBarracks(x) {
+    nbPaper(x);
+    const floor = new Path2D(); floor.rect(0, 304, 452, 56); hatch(x, floor, { angle: .25, gap: 5, alpha: .2, seed: 2 });
+    const fl = new Path2D(); fl.moveTo(0, 304); fl.lineTo(452, 304); pencil(x, fl, .7);
+    hatch(x, BUNK, { angle: -.9, gap: 2.4, alpha: .6, seed: 3 }); pencil(x, BUNK, .85);
+    hatch(x, MATS, { angle: .7, gap: 5, alpha: .22, seed: 4 }); pencil(x, MATS, .6, .9);
+    poster(x, 210, 40, 92, 116, { paper: '#eadfc6', red: '#c8312b', ink: '#1c1a18', mis: 1.2 }); tape(x, 214, 40, -.35); tape(x, 298, 42, .4);
+    pencil(x, CORD, .7, .9); hatch(x, SHADE, { angle: .3, gap: 2, alpha: .7, seed: 5 }); pencil(x, SHADE, .8); pencil(x, BULB, .7, .9);
+    const rays = new Path2D(); for (let i = 0; i < 9; i++) { const a = Math.PI * (.12 + i * .095); rays.moveTo(350 + Math.cos(a) * 12, 61 + Math.sin(a) * 12); rays.lineTo(350 + Math.cos(a) * 24, 61 + Math.sin(a) * 24); } pencil(x, rays, .45, .8);
+    hatch(x, TUMB, { angle: -.4, gap: 3, alpha: .45, seed: 6 }); pencil(x, TUMB, .8); hatch(x, REC, { angle: .5, gap: 2, alpha: .7, seed: 8 }); pencil(x, REC, .85); x.fillStyle = '#f4f0e5'; x.fill(REELS); pencil(x, REELS, .8, .9);
+    hatch(x, SOFA_AT, { angle: -.6, gap: 3.2, alpha: .38, seed: 7 }); pencil(x, SOFA_AT, .85);
+    CARRIERS.forEach(([px, py, s, f], i) => nbRat(x, px, py, s, f, 30 + i * 3));
+    const arr = new Path2D(); arr.moveTo(346, 150); arr.quadraticCurveTo(330, 166, 318, 178); arr.moveTo(318, 178); arr.lineTo(320, 168); arr.moveTo(318, 178); arr.lineTo(327, 175); redPen(x, arr);
+    x.save(); x.translate(300, 132); x.rotate(-.05); x.fillStyle = 'rgba(200,49,43,.95)'; x.font = `18px ${HAND}`; x.fillText('диван — два шага влево!', 0, 0); x.restore();
+    const ul = new Path2D(); ul.moveTo(300, 140); ul.quadraticCurveTo(370, 134, 446, 131); redPen(x, ul, .8, 1.2);
+  }
+  function nbBattle(x, lit) {
+    nbPaper(x);
+    pencil(x, CELLS, .38, .8);
+    if (lit) { const clip = new Path2D(FIELD); [...SHEETS, ...STRONGS, SEC].forEach(p => clip.addPath(p)); hatch(x, clip, { angle: .85, gap: 4.4, alpha: .4, seed: 21, rule: 'evenodd', box: [G.x, G.y, 270, 270] }); SHEETS.forEach(p => pencil(x, p, .4, .8)); STRONGS.forEach(p => { pencil(x, p, .65, 1); pencil(x, xMark(...cc(...STRONG[0]), 6), .9, 1.6); }); pencil(x, SEC, .55, .8); }
+    else { hatch(x, FIELD, { angle: .85, gap: 2.1, alpha: .72, seed: 21, box: [G.x, G.y, 270, 270] }); hatch(x, FIELD, { angle: -.75, gap: 2.8, alpha: .55, seed: 22, box: [G.x, G.y, 270, 270] }); }
+    strikerPaths().forEach((s, i) => { if (lit) { hatch(x, s.body, { angle: .4, gap: 1.8, alpha: .8, seed: 50 + i }); pencil(x, s.body, .9, 1); pencil(x, s.tail, .85, 1.2); x.fillStyle = '#f4f0e5'; x.fill(s.blind); pencil(x, s.blind, .5, .6); } else { pencil(x, s.body, .3, .9); } });
+    redPen(x, xMark(...cc(...TRAP), 7), lit ? .95 : .7, 1.8);
+    const zl = new Path2D(); zl.moveTo(60, 296); zl.lineTo(420, 296); pencil(x, zl, .6, .9);
+    coordPaths().forEach((s, i) => { hatch(x, s.body, { angle: .4, gap: 2, alpha: .7, seed: 60 + i }); pencil(x, s.body, .85, 1); pencil(x, s.tail, .8, 1.2); });
+    const lampC = new Path2D(); lampC.arc(LAMP[0], LAMP[1], 7, 0, Math.PI * 2); redPen(x, lampC, .95, 1.8);
+    if (lit) { const r = rng(9); const rays = new Path2D(); for (let i = 0; i < 13; i++) { const a = -Math.PI + .3 + i * (Math.PI - .6) / 12; const l = 70 + r() * 70; rays.moveTo(LAMP[0] + Math.cos(a) * 14, LAMP[1] + Math.sin(a) * 14); rays.lineTo(LAMP[0] + Math.cos(a) * l, LAMP[1] + Math.sin(a) * l); } redPen(x, rays, .55, 1.1); }
+  }
+  function agedSheet(x, sx, sy, w, h, base, seed) { const r = rng(seed); x.fillStyle = base; x.fillRect(sx, sy, w, h); for (let i = 0; i < 5; i++) { const cx = sx + r() * w, cy = sy + r() * h, rr = 20 + r() * 60; const g = x.createRadialGradient(cx, cy, 0, cx, cy, rr); g.addColorStop(0, 'rgba(160,120,60,.16)'); g.addColorStop(1, 'rgba(160,120,60,0)'); x.fillStyle = g; x.fillRect(sx, sy, w, h); } x.strokeStyle = 'rgba(140,110,60,.35)'; x.lineWidth = 3; x.strokeRect(sx + 1.5, sy + 1.5, w - 3, h - 3); x.strokeStyle = 'rgba(110,85,50,.28)'; x.lineWidth = 1; x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + w, sy + w); x.moveTo(sx + w, sy); x.lineTo(sx, sy + w); x.moveTo(sx, sy + w); x.lineTo(sx + w, sy + w); x.stroke(); }
+  function nbLetter(x) {
+    nbPaper(x);
+    x.save(); x.translate(312, 182); x.rotate(.06); agedSheet(x, -122, -152, 244, 304, '#e7d9b8', 31); sheetText(x, '#2f3a66', -108, -124, 14.5, 21.5); x.restore();
+    tape(x, 236, 36, -.4); tape(x, 410, 44, .3);
+    x.save(); x.translate(132, 214); x.rotate(-.1);
+    triangleLetter(x, { fill: p => { x.fillStyle = '#dcc9a0'; x.fill(p); x.save(); x.clip(p); const g = x.createRadialGradient(-40, 10, 0, -40, 10, 90); g.addColorStop(0, 'rgba(160,120,60,.2)'); g.addColorStop(1, 'rgba(160,120,60,0)'); x.fillStyle = g; x.fillRect(-120, -70, 240, 150); x.restore(); }, edge: p => pencil(x, p, .85, 1.1), fold: 'rgba(90,75,50,.45)', ink: '#2f3a66', stamp: 'rgba(120,40,90,.75)' });
+    x.restore(); tape(x, 46, 154, .5);
+    x.save(); x.translate(26, 336); x.rotate(-.03); x.fillStyle = 'rgba(200,49,43,.9)'; x.font = `16px ${HAND}`; x.fillText('письмо 2 — от сына', 0, 0); x.restore();
+  }
+
+  // ---------- 2. ROSTA ----------
+  const R = { cream: '#eadfc6', black: '#1c1a18', red: '#c62f24', ochre: '#c99a3b' };
+  function speckle(x, seed, n, col) { const r = rng(seed); x.fillStyle = col; for (let i = 0; i < n; i++) x.fillRect(r() * W, r() * H, 1 + r() * 1.4, 1 + r() * 1.4); }
+  function rostaFrame(x, num, cap, dark, draw) {
+    x.fillStyle = R.cream; x.fillRect(0, 0, W, H);
+    x.save(); x.beginPath(); x.rect(12, 12, 456, 282); x.clip(); x.fillStyle = dark ? R.black : R.cream; x.fillRect(12, 12, 456, 282); draw(); x.restore();
+    x.strokeStyle = R.black; x.lineWidth = 5; x.strokeRect(12, 12, 456, 282);
+    x.font = `14px ${DISPLAY}`; x.textBaseline = 'middle'; x.fillStyle = R.red; x.fillText(num + '.', 16, 326); x.fillStyle = R.black; x.fillText(cap, 44, 326); x.textBaseline = 'alphabetic';
+    speckle(x, 3, 900, 'rgba(234,223,198,.35)'); speckle(x, 4, 700, 'rgba(28,26,24,.10)');
+  }
+  function mis(x, p, col) { x.save(); x.translate(1.8, 1.2); x.fillStyle = col; x.fill(p); x.restore(); }
+  function rostaBarracks(x) {
+    rostaFrame(x, 1, 'ДИВАН — НА ДВА ШАГА ВЛЕВО!', false, () => {
+      x.save(); x.translate(0, -12);
+      const wedge = new Path2D(); wedge.moveTo(170, 24); wedge.lineTo(330, 24); wedge.lineTo(250, 310); wedge.closePath(); mis(x, wedge, R.red);
+      x.fillStyle = R.black; x.fillRect(0, 300, W, 20);
+      x.strokeStyle = R.black; x.lineWidth = 4.5; x.stroke(BUNK); x.fillStyle = R.cream; x.fill(MATS); x.lineWidth = 2.5; x.stroke(MATS);
+      poster(x, 210, 40, 92, 116, { paper: R.cream, red: R.red, ink: R.black, mis: 1.8, border: 3 });
+      x.fillStyle = R.black; x.fill(SHADE); x.lineWidth = 2; x.stroke(CORD); mis(x, BULB, R.red); x.lineWidth = 3.5; x.beginPath(); for (let i = 0; i < 7; i++) { const a = Math.PI * (.15 + i * .117); x.moveTo(350 + Math.cos(a) * 12, 61 + Math.sin(a) * 12); x.lineTo(350 + Math.cos(a) * 30, 61 + Math.sin(a) * 30); } x.stroke();
+      x.fillStyle = R.black; x.fill(TUMB); mis(x, REC, R.red); x.fillStyle = R.cream; x.fill(REELS);
+      mis(x, SOFA_AT, R.red); x.lineWidth = 3; x.stroke(SOFA_AT);
+      CARRIERS.forEach(([px, py, s, f]) => { x.fillStyle = R.black; x.fill(T(RAT_UP, px, py, 0, s, f)); x.lineWidth = 3.4 * s; x.lineCap = 'round'; x.stroke(T(RAT_UP_TAIL, px, py, 0, s, f)); x.fillStyle = R.cream; x.fill(T(RAT_UP_EYE, px, py, 0, s, f)); });
+      x.restore();
+    });
+  }
+  function rostaBattle(x, lit) {
+    rostaFrame(x, 2, 'ТРЕВОГА! ГЛЯДИ ВО ВСПЫШКУ', true, () => {
+      x.save(); x.translate(240, 153); x.scale(.82, .82); x.translate(-240, -183);
+      if (lit) { x.save(); x.clip(FIELD); for (let i = 0; i < 7; i += 2) { const a0 = -Math.PI + .25 + i * (Math.PI - .5) / 7, a1 = a0 + (Math.PI - .5) / 7; const p = new Path2D(); p.moveTo(...LAMP); p.lineTo(LAMP[0] + Math.cos(a0) * 420, LAMP[1] + Math.sin(a0) * 420); p.lineTo(LAMP[0] + Math.cos(a1) * 420, LAMP[1] + Math.sin(a1) * 420); p.closePath(); x.fillStyle = R.red; x.fill(p); } x.restore(); }
+      x.strokeStyle = lit ? 'rgba(234,223,198,.22)' : '#2e2a26'; x.lineWidth = 1.2; x.stroke(CELLS); x.strokeStyle = lit ? R.cream : '#3a3530'; x.lineWidth = 3; x.stroke(FIELD);
+      const crea = lit ? R.cream : '#302c28';
+      SHEETS.forEach(p => { x.fillStyle = crea; x.fill(p); }); STRONGS.forEach(p => { x.fillStyle = crea; x.fill(p); x.strokeStyle = lit ? R.black : '#24211d'; x.lineWidth = 4; x.stroke(xMark(...cc(...STRONG[0]), 6.5)); });
+      x.fillStyle = lit ? R.cream : '#2a2622'; x.fill(SEC);
+      strikerPaths().forEach(s => { x.fillStyle = lit ? R.ochre : '#4a3b22'; x.fill(s.body); x.strokeStyle = x.fillStyle; x.lineWidth = 2.4; x.lineCap = 'round'; x.stroke(s.tail); x.fillStyle = lit ? R.cream : '#5a5245'; x.fill(s.blind); });
+      x.strokeStyle = lit ? R.cream : 'rgba(234,223,198,.45)'; x.lineWidth = 3.5; x.stroke(xMark(...cc(...TRAP), 7));
+      x.fillStyle = R.cream; x.fillRect(60, 296, 360, 3);
+      coordPaths().forEach(s => { x.fillStyle = R.ochre; x.fill(s.body); x.strokeStyle = R.ochre; x.lineWidth = 2.6; x.stroke(s.tail); });
+      x.beginPath(); x.arc(LAMP[0], LAMP[1], 9, 0, Math.PI * 2); x.fillStyle = lit ? R.red : '#6b2520'; x.fill(); x.strokeStyle = R.cream; x.lineWidth = 2; x.stroke();
+      x.restore();
+    });
+  }
+  function rostaLetter(x) {
+    rostaFrame(x, 3, 'ПИСЬМО С РОДИНЫ', false, () => {
+      const c = new Path2D(); c.arc(240, 150, 112, 0, Math.PI * 2); mis(x, c, R.red);
+      x.strokeStyle = R.black; x.lineWidth = 5; x.lineCap = 'butt'; x.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 + .1; x.moveTo(240 + Math.cos(a) * 122, 150 + Math.sin(a) * 122); x.lineTo(240 + Math.cos(a) * 160, 150 + Math.sin(a) * 160); } x.stroke();
+      x.save(); x.translate(240, 152); x.rotate(-.08);
+      triangleLetter(x, { fill: p => { x.fillStyle = R.cream; x.fill(p); }, edge: p => { x.strokeStyle = R.black; x.lineWidth = 4; x.lineJoin = 'round'; x.stroke(p); }, fold: R.black, ink: R.black, stamp: R.black });
+      x.restore();
+    });
+  }
+
+  // ---------- 3. cutout ----------
+  let GRAIN = null;
+  function grainTile() { const { c, x } = mk(140, 140, 1); const id = x.createImageData(140, 140); const r = rng(5); for (let i = 0; i < 140 * 140; i++) { const v = r() * 255; id.data[i * 4] = v; id.data[i * 4 + 1] = v; id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 40 + r() * 60; } x.putImageData(id, 0, 0); return c; }
+  function cut(x, p, col, sh = true, ga = .45) { x.save(); if (sh) { x.shadowColor = 'rgba(8,6,5,.5)'; x.shadowBlur = 9; x.shadowOffsetX = 3; x.shadowOffsetY = 4; } x.fillStyle = col; x.fill(p); x.restore(); x.save(); x.clip(p); x.globalAlpha = ga; x.globalCompositeOperation = 'overlay'; x.fillStyle = x.createPattern(GRAIN, 'repeat'); x.fillRect(0, 0, W, H); x.restore(); }
+  function fog(x, seed, n, a, col = '205,210,215', box = [0, 0, W, H]) { const r = rng(seed); for (let i = 0; i < n; i++) { const cx = box[0] + r() * box[2], cy = box[1] + r() * box[3], rr = 60 + r() * 140; const g = x.createRadialGradient(cx, cy, 0, cx, cy, rr); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(0, 0, W, H); } }
+  function vignette(x, a = .55) { const g = x.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .9); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`); x.fillStyle = g; x.fillRect(0, 0, W, H); }
+  function film(x, a = .1) { x.save(); x.globalAlpha = a; x.globalCompositeOperation = 'overlay'; x.fillStyle = x.createPattern(GRAIN, 'repeat'); x.fillRect(0, 0, W, H); x.restore(); }
+  function glow(x, cx, cy, r, col, a) { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(0, 0, W, H); }
+  function cutBarracks(x) {
+    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3d434b'); g.addColorStop(1, '#5a4a3c'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    glow(x, 350, 60, 300, '232,197,138', .38);
+    const r = rng(12); for (let i = 0; i < 7; i++) { const p = new Path2D(); p.rect(i * 72 - 10 + r() * 6, 0, 66, 300); cut(x, p, i % 2 ? 'rgba(110,100,88,.35)' : 'rgba(95,88,80,.3)', false, .3); }
+    const floor = new Path2D(); floor.rect(-10, 302, W + 20, 70); cut(x, floor, '#33291f');
+    cut(x, BUNK, '#4a3a2e'); cut(x, MATS, '#8d7b62');
+    const pb = new Path2D(); pb.rect(210, 40, 92, 116); cut(x, pb, '#d8cbb0'); poster(x, 210, 40, 92, 116, { paper: '#e8dfcc', red: '#b8463a', ink: '#2b2622' }); film(x, 0);
+    x.strokeStyle = '#26221e'; x.lineWidth = 1.5; x.stroke(CORD); cut(x, SHADE, '#3a3029'); glow(x, 350, 62, 26, '255,236,190', .9);
+    cut(x, TUMB, '#5b4636'); cut(x, REC, '#2f3033'); x.fillStyle = '#c9c2b4'; x.fill(REELS);
+    cut(x, SOFA_AT, '#7a3b30');
+    CARRIERS.forEach(([px, py, s, f]) => { cut(x, T(RAT_UP, px, py, 0, s, f), '#26221e'); x.save(); x.strokeStyle = '#26221e'; x.lineWidth = 3 * s; x.lineCap = 'round'; x.stroke(T(RAT_UP_TAIL, px, py, 0, s, f)); x.fillStyle = '#d8cbb0'; x.fill(T(RAT_UP_EYE, px, py, 0, s, f)); x.restore(); });
+    fog(x, 14, 6, .08, '205,210,215', [0, 230, W, 120]);
+    vignette(x, .6); film(x, .14);
+  }
+  function cutBattle(x, lit) {
+    x.fillStyle = '#171b20'; x.fillRect(0, 0, W, H);
+    const fp = new Path2D(); fp.rect(G.x - 6, G.y - 6, 282, 282); cut(x, fp, '#1e242a', true, .3);
+    if (lit) glow(x, LAMP[0], LAMP[1], 360, '190,72,58', .6);
+    x.strokeStyle = lit ? 'rgba(230,220,205,.12)' : 'rgba(200,200,200,.04)'; x.lineWidth = 1; x.stroke(CELLS);
+    const all = [...SHEETS, ...STRONGS];
+    all.forEach(p => { x.save(); if (lit) { x.shadowColor = 'rgba(236,229,214,.75)'; x.shadowBlur = 14; x.fillStyle = '#e9e2d4'; } else { x.fillStyle = 'rgba(225,218,205,.07)'; } x.fill(p); x.restore(); });
+    if (lit) { x.save(); x.strokeStyle = '#2a2522'; x.lineWidth = 3; x.lineCap = 'round'; x.stroke(xMark(...cc(...STRONG[0]), 6)); x.restore(); cut(x, SEC, '#d8cbb0', true, .4); }
+    strikerPaths().forEach(s => { x.save(); x.globalAlpha = lit ? 1 : .35; cut(x, s.body, '#26221e'); x.strokeStyle = '#26221e'; x.lineWidth = 2.2; x.lineCap = 'round'; x.stroke(s.tail); x.fillStyle = '#e9e2d4'; x.fill(s.blind); x.restore(); });
+    x.save(); x.strokeStyle = lit ? 'rgba(215,205,185,.75)' : 'rgba(215,205,185,.3)'; x.lineWidth = 2.4; x.lineCap = 'round'; x.stroke(xMark(...cc(...TRAP), 7)); x.restore();
+    fog(x, lit ? 21 : 22, lit ? 10 : 16, lit ? .1 : .16, '170,178,186', [G.x, G.y, 270, 270]);
+    const zone = new Path2D(); zone.rect(56, 298, 368, 60); cut(x, zone, '#2a2420');
+    coordPaths().forEach(s => { cut(x, s.body, '#3a322b'); x.save(); x.strokeStyle = '#3a322b'; x.lineWidth = 2.4; x.lineCap = 'round'; x.stroke(s.tail); x.restore(); });
+    const bulb = new Path2D(); bulb.arc(LAMP[0], LAMP[1], 8, 0, Math.PI * 2); cut(x, bulb, lit ? '#d0574a' : '#5a2721'); if (lit) glow(x, LAMP[0], LAMP[1], 40, '240,110,90', .7);
+    vignette(x, .7); film(x, .16);
+  }
+  function cutLetter(x) {
+    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3b2c22'); g.addColorStop(1, '#1f1712'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    glow(x, 120, 30, 380, '232,197,138', .35);
+    x.save(); x.translate(312, 182); x.rotate(.06); const sp = new Path2D(); sp.rect(-122, -152, 244, 304); cut(x, sp, '#d9ccb2', true, .5); x.save(); x.clip(sp); x.strokeStyle = 'rgba(90,70,45,.25)'; x.lineWidth = 1; x.beginPath(); x.moveTo(-122, -152); x.lineTo(122, 92); x.moveTo(122, -152); x.lineTo(-122, 92); x.stroke(); x.restore(); sheetText(x, '#3a2f28', -108, -124, 14.5, 21.5); x.restore();
+    x.save(); x.translate(132, 214); x.rotate(-.1);
+    triangleLetter(x, { fill: p => cut(x, p, '#cdbb98', true, .55), edge: () => {}, fold: 'rgba(80,60,40,.45)', ink: '#3a2f28', stamp: 'rgba(109,58,90,.7)' });
+    x.restore();
+    vignette(x, .65); film(x, .14);
+  }
+
+  // ---------- 4. dither ----------
+  const PAL = [[27, 26, 23], [90, 65, 40], [160, 122, 62], [221, 208, 179], [168, 50, 43]];
+  const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function dither(c) { const w = c.width, h = c.height, cx = c.getContext('2d'); const id = cx.getImageData(0, 0, w, h), d = id.data; for (let y = 0; y < h; y++) for (let x0 = 0; x0 < w; x0++) { const i = (y * w + x0) * 4, t = (B4[(y & 3) * 4 + (x0 & 3)] / 16 - .47) * 70; const r = d[i] + t, g = d[i + 1] + t, b = d[i + 2] + t; let best = 0, bd = 1e9; for (let k = 0; k < PAL.length; k++) { const dr = r - PAL[k][0], dg = g - PAL[k][1], db = b - PAL[k][2], dd = dr * dr * .3 + dg * dg * .59 + db * db * .11; if (dd < bd) { bd = dd; best = k; } } d[i] = PAL[best][0]; d[i + 1] = PAL[best][1]; d[i + 2] = PAL[best][2]; d[i + 3] = 255; } cx.putImageData(id, 0, 0); return c; }
+  function lowRes(draw) { const { c, x } = mk(W, H, 1 / 3); draw(x); return dither(c); }
+  function up(x, low) { x.save(); x.imageSmoothingEnabled = false; x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(low, 0, 0, x.canvas.width, x.canvas.height); x.restore(); }
+  const mix = (a, b, k) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`;
+  function dBarracks(x) {
+    const g = x.createRadialGradient(350, 50, 0, 350, 50, 420); g.addColorStop(0, '#efe3c4'); g.addColorStop(.35, '#a8865a'); g.addColorStop(.7, '#4a3826'); g.addColorStop(1, '#1b1a17'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#3e2d1c'; x.fillRect(0, 302, W, 60);
+    x.fillStyle = '#2a2219'; x.fill(BUNK); x.fillStyle = '#9a7642'; x.fill(MATS);
+    poster(x, 210, 40, 92, 116, { paper: '#d8cbb0', red: '#a8322b', ink: '#1b1a17' });
+    x.fillStyle = '#1b1a17'; x.fill(SHADE); x.strokeStyle = '#1b1a17'; x.lineWidth = 3; x.stroke(CORD); x.fillStyle = '#fff6dc'; x.fill(BULB);
+    x.fillStyle = '#3a2a1c'; x.fill(TUMB); x.fillStyle = '#24211c'; x.fill(REC); x.fillStyle = '#bfb39a'; x.fill(REELS);
+    x.fillStyle = '#7a3a2c'; x.fill(SOFA_AT);
+    CARRIERS.forEach(([px, py, s, f]) => { x.fillStyle = '#1e1c19'; x.fill(T(RAT_UP, px, py, 0, s, f)); x.strokeStyle = '#1e1c19'; x.lineWidth = 5 * s; x.stroke(T(RAT_UP_TAIL, px, py, 0, s, f)); });
+  }
+  function dBattle(x, k) {
+    x.fillStyle = '#121110'; x.fillRect(0, 0, W, H); x.fillStyle = '#1c1a17'; x.fill(FIELD);
+    if (k > 0) { const g = x.createRadialGradient(LAMP[0], LAMP[1], 0, LAMP[0], LAMP[1], 330); g.addColorStop(0, `rgba(205,70,55,${.95 * k})`); g.addColorStop(.6, `rgba(150,45,38,${.55 * k})`); g.addColorStop(1, 'rgba(150,45,38,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H); x.strokeStyle = `rgba(160,122,62,${.6 * k})`; x.lineWidth = 3; x.stroke(CELLS); }
+    const crea = mix([36, 34, 31], [226, 214, 186], k);
+    SHEETS.forEach(p => { x.fillStyle = crea; x.fill(p); }); STRONGS.forEach(p => { x.fillStyle = crea; x.fill(p); x.strokeStyle = '#1b1a17'; x.lineWidth = 6; x.stroke(xMark(...cc(...STRONG[0]), 6.5)); });
+    x.fillStyle = mix([30, 28, 25], [221, 208, 179], k); x.fill(SEC);
+    strikerPaths().forEach(s => { x.fillStyle = mix([28, 26, 23], [160, 122, 62], k); x.fill(s.body); x.strokeStyle = x.fillStyle; x.lineWidth = 4; x.stroke(s.tail); x.fillStyle = mix([40, 38, 34], [235, 225, 200], k); x.fill(s.blind); });
+    x.strokeStyle = '#b8382f'; x.lineWidth = 6; x.stroke(xMark(...cc(...TRAP), 7));
+    x.fillStyle = '#3e2d1c'; x.fillRect(56, 298, 368, 62);
+    coordPaths().forEach(s => { x.fillStyle = '#6b4c2c'; x.fill(s.body); x.strokeStyle = '#6b4c2c'; x.lineWidth = 4; x.stroke(s.tail); });
+    x.beginPath(); x.arc(LAMP[0], LAMP[1], 10, 0, Math.PI * 2); x.fillStyle = k > .4 ? '#f2c9a8' : '#7a2a24'; x.fill();
+  }
+  function dLetter(x) {
+    const g = x.createRadialGradient(120, 30, 0, 120, 30, 460); g.addColorStop(0, '#d9c49a'); g.addColorStop(.45, '#6b4c2c'); g.addColorStop(1, '#1b1a17'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.save(); x.translate(312, 182); x.rotate(.06); const sg = x.createLinearGradient(-122, -152, 122, 152); sg.addColorStop(0, '#efe4c8'); sg.addColorStop(1, '#a8916a'); x.fillStyle = sg; x.fillRect(-122, -152, 244, 304); x.fillStyle = '#3a2e22'; for (let i = 0; i < 12; i++) { const r = rng(70 + i); x.fillRect(-106, -128 + i * 21.5, 120 + r() * 90, 4); } x.restore();
+    x.save(); x.translate(132, 214); x.rotate(-.1);
+    const p = new Path2D(); p.moveTo(-110, -60); p.lineTo(110, -60); p.lineTo(0, 70); p.closePath(); const tg = x.createLinearGradient(-110, -60, 60, 70); tg.addColorStop(0, '#eadcb8'); tg.addColorStop(1, '#9c8460'); x.fillStyle = tg; x.fill(p);
+    x.strokeStyle = '#5a4128'; x.lineWidth = 3; x.beginPath(); x.moveTo(-62, -60); x.lineTo(0, 12); x.lineTo(62, -60); x.stroke();
+    x.fillStyle = '#3a2e22'; x.fillRect(-70, -44, 110, 5); x.fillRect(-40, -26, 60, 5); x.fillRect(-30, -8, 54, 5);
+    x.strokeStyle = '#a8322b'; x.lineWidth = 4; x.beginPath(); x.arc(70, -36, 17, 0, Math.PI * 2); x.stroke();
+    x.restore();
+  }
+
+  // ---------- wiring ----------
+  const STATIC = { nb: { barracks: nbBarracks, letter: nbLetter }, rosta: { barracks: rostaBarracks, letter: rostaLetter }, cut: { barracks: cutBarracks, letter: cutLetter } };
+  const BATTLE = { nb: nbBattle, rosta: rostaBattle, cut: cutBattle };
+  const animated = [];
+  function setup(canvas) { canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR); const x = canvas.getContext('2d'); x.setTransform(DPR, 0, 0, DPR, 0, 0); return x; }
+  function frame(fn) { const f = mk(W, H, DPR); fn(f.x); return f.c; }
+  function render() {
+    GRAIN = grainTile();
+    document.querySelectorAll('canvas[data-style]').forEach(cv => {
+      const style = cv.dataset.style, scene = cv.dataset.scene, x = setup(cv);
+      if (style === 'dither') {
+        if (scene === 'battle') { const frames = [0, .5, 1].map(k => frame(fx => up(fx, lowRes(lx => dBattle(lx, k))))); animated.push({ cv, x, kind: 'steps', frames, visible: true }); }
+        else up(x, lowRes(scene === 'barracks' ? dBarracks : dLetter));
+        return;
+      }
+      if (scene === 'battle') { const dark = frame(fx => BATTLE[style](fx, false)), lit = frame(fx => BATTLE[style](fx, true)); animated.push({ cv, x, kind: 'blend', dark, lit, visible: true }); }
+      else STATIC[style][scene](x);
+    });
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { const a = animated.find(o => o.cv === e.target); if (a) a.visible = e.isIntersecting; })) : null;
+    animated.forEach(a => { if (io) io.observe(a.cv); paint(a, REDUCED ? .75 : 1); });
+    if (!REDUCED) requestAnimationFrame(tick);
+  }
+  function paint(a, f) {
+    const x = a.x; x.save(); x.setTransform(1, 0, 0, 1, 0, 0);
+    if (a.kind === 'blend') { x.globalAlpha = 1; x.drawImage(a.dark, 0, 0); x.globalAlpha = Math.max(0, Math.min(1, f)); x.drawImage(a.lit, 0, 0); }
+    else { const i = f > .62 ? 2 : f > .22 ? 1 : 0; x.drawImage(a.frames[i], 0, 0); }
+    x.restore();
+  }
+  function tick(t) {
+    const ph = (t % 2000) / 1000;
+    const f = ph < .07 ? ph / .07 : Math.exp(-(ph - .07) * 2.4);
+    animated.forEach(a => { if (a.visible) paint(a, .04 + f * .96); });
+    requestAnimationFrame(tick);
+  }
+  const fontsReady = document.fonts ? Promise.all([[`16px "Bad Script"`, 'Папочка, я очень скучаю'], [`14px "Rubik Mono One"`, 'ТРЕВОГА! ДИВАН'], [`13px "PT Mono"`, 'ПОЛЕВАЯ ПОЧТА']].map(([f, t]) => document.fonts.load(f, t))).catch(() => {}) : Promise.resolve();
+  Promise.race([fontsReady, new Promise(r => setTimeout(r, 2500))]).then(render);
+})();
+</script>
