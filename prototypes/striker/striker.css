@@ -1,0 +1,192 @@
+/* Prototype Б: black screen; every line and caption is a flat plate. */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#ui > .layer {
+  pointer-events: none;
+}
+
+.line {
+  position: absolute;
+  display: grid;
+  gap: 0.1rem;
+  max-width: calc(340 * var(--u));
+  padding: calc(8 * var(--u)) calc(14 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: 0 0 calc(30 * var(--u)) rgba(0, 0, 0, 0.6);
+  transition: opacity 0.45s;
+  animation: line-in 0.25s ease-out;
+}
+
+@keyframes line-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.line.fade {
+  opacity: 0;
+}
+
+.line .who {
+  font: 700 max(0.7rem, calc(13 * var(--u))) var(--serif);
+  color: var(--muted-cream);
+  letter-spacing: 0.02em;
+}
+
+.line .text {
+  line-height: 1.2;
+}
+
+/* Норкин writes by hand. */
+.line.norkin .text {
+  font-family: var(--hand);
+  font-size: max(1.15rem, calc(29 * var(--u)));
+}
+
+.line.norkin {
+  border-left: calc(6 * var(--u)) solid var(--ink);
+}
+
+.line.whisper .text {
+  font-size: max(1rem, calc(24 * var(--u)));
+}
+
+/* Корочкина is senior: louder and bigger. Зернов is junior: small. */
+.line.senior .text {
+  font: 700 max(1rem, calc(22 * var(--u))) var(--serif);
+}
+
+.line.junior .text {
+  font: max(0.8rem, calc(15 * var(--u))) var(--mono);
+}
+
+.line .next {
+  justify-self: end;
+  margin-top: 0.2rem;
+  font: max(0.75rem, calc(13 * var(--u))) var(--serif);
+  color: var(--muted-cream);
+}
+
+.turn-plate {
+  position: absolute;
+  padding: calc(4 * var(--u)) calc(10 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  font: 700 max(0.8rem, calc(15 * var(--u))) var(--serif);
+}
+
+.captions {
+  position: absolute;
+  display: grid;
+  justify-items: start;
+  gap: calc(4 * var(--u));
+  width: calc(380 * var(--u));
+}
+
+.cap {
+  margin: 0;
+  padding: calc(3 * var(--u)) calc(9 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  font: max(0.75rem, calc(15 * var(--u))) var(--mono);
+  transition: opacity 0.4s;
+}
+
+.cap.fade {
+  opacity: 0;
+}
+
+.dock {
+  position: absolute;
+  display: grid;
+  gap: calc(8 * var(--u));
+  width: calc(720 * var(--u));
+  padding: calc(10 * var(--u)) calc(12 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.dock .bar {
+  background: rgba(28, 26, 24, 0.15);
+}
+
+.dock .bar > i {
+  background: var(--ink);
+  transform: scaleX(0);
+}
+
+.dock-row {
+  display: flex;
+  gap: calc(10 * var(--u));
+  align-items: center;
+}
+
+.slots {
+  display: flex;
+  flex: 1;
+  gap: calc(8 * var(--u));
+}
+
+.slot {
+  flex: 1;
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  border: 2px solid var(--ink);
+  font: max(0.85rem, calc(17 * var(--u))) var(--mono);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.slot.empty {
+  color: var(--muted-cream);
+  border-style: dashed;
+}
+
+.slot.now {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.done {
+  pointer-events: auto;
+  padding: calc(5 * var(--u)) calc(16 * var(--u));
+  border: 0;
+  background: var(--red);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: max(0.85rem, calc(17 * var(--u)));
+}
+
+.done:disabled {
+  background: var(--muted-cream);
+  cursor: default;
+}
+
+.keystrip {
+  position: absolute;
+  margin: 0;
+  width: calc(1200 * var(--u));
+  color: var(--muted-dark);
+  font-size: max(0.7rem, calc(14 * var(--u)));
+  text-align: center;
+}
+
+.keystrip kbd {
+  border-width: 1px;
+}
+
+.debug-plan {
+  position: absolute;
+  margin: 0;
+  padding: calc(6 * var(--u)) calc(10 * var(--u));
+  background: var(--cream);
+  color: var(--ink);
+  font: max(0.7rem, calc(13 * var(--u))) var(--mono);
+  white-space: pre;
+}
