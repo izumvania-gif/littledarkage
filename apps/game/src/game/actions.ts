@@ -4,7 +4,7 @@
  */
 export type Facing = 'left' | 'right';
 export type Light = 'warm' | 'disco' | 'dark' | 'alarm';
-export type TrackName = 'concert' | 'disco' | 'tape';
+export type TrackName = 'concert' | 'disco' | 'tape' | 'concert2' | 'concert3' | 'riot';
 export type Sound = 'stomp' | 'siren' | 'click' | 'bell';
 
 export type Action =
@@ -21,10 +21,18 @@ export type Action =
   | { kind: 'letterShow'; n: number; reader: string }
   | { kind: 'letterOpen'; n: number }
   | { kind: 'letterReply'; n: number }
-  | { kind: 'pause'; ms: number };
+  | { kind: 'pause'; ms: number }
+  /** A duty right here in the scene: the sofa (with a partner), the leaves, the pen (blind in cycle 2). */
+  | { kind: 'duty'; duty: 'sofa' | 'leaves' | 'pen'; partner?: string }
+  /** The player, named general, puts the speech together (stages/speech); its kind comes back as a flag. */
+  | { kind: 'assemble' }
+  /** The general's peaked cap goes to this face (the new general). */
+  | { kind: 'cap'; id: string }
+  /** The box with the creature taken alive: shown or taken away. */
+  | { kind: 'box'; on: boolean };
 
 const LIGHTS: readonly Light[] = ['warm', 'disco', 'dark', 'alarm'];
-const TRACKS: readonly TrackName[] = ['concert', 'disco', 'tape'];
+const TRACKS: readonly TrackName[] = ['concert', 'disco', 'tape', 'concert2', 'concert3', 'riot'];
 const SOUNDS: readonly Sound[] = ['stomp', 'siren', 'click', 'bell'];
 const isFacing = (v: string | undefined): v is Facing => v === 'left' || v === 'right';
 
@@ -60,6 +68,15 @@ export function parseAction(src: string): Action | null {
       return Number.isInteger(n) && n > 0 ? { kind: 'letterReply', n } : null;
     case 'pause':
       return Number.isFinite(n) && n >= 0 ? { kind, ms: n } : null;
+    case 'duty':
+      if (a !== 'sofa' && a !== 'leaves' && a !== 'pen') return null;
+      return { kind, duty: a, ...(b ? { partner: b } : {}) };
+    case 'assemble':
+      return { kind };
+    case 'cap':
+      return a ? { kind, id: a } : null;
+    case 'box':
+      return a === 'on' || a === 'off' ? { kind, on: a === 'on' } : null;
     default:
       return null;
   }
@@ -77,6 +94,10 @@ export function actors(a: Action): string[] {
       return [a.id];
     case 'letterShow':
       return [a.reader];
+    case 'duty':
+      return a.partner ? [a.partner] : [];
+    case 'cap':
+      return [a.id];
     default:
       return [];
   }

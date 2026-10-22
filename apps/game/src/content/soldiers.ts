@@ -54,3 +54,20 @@ export function soldier(id: string): Soldier {
   if (!s) throw new Error(`no soldier ${id}`);
   return s;
 }
+
+/** Display names by soldier id, from the run: a soldier who fell comes back under a new name. */
+export type Names = Readonly<Record<string, string>>;
+
+/** The name a soldier goes by now (his own unless the run says otherwise). */
+export function nameOf(id: string, names?: Names): string {
+  return names?.[id] ?? SOLDIERS[id]?.name ?? id;
+}
+
+/**
+ * The words a coordinator uses. A newcomer who came back under a new name keeps them, with his signal and
+ * his hand (concept «Напарник и другие пары»: «сигнал, почерк и словечки у него те же»); this is the one
+ * place to change if a new name should mean plain words.
+ */
+export function wordsOf(id: string, _names?: Names): Words {
+  return SOLDIERS[id]?.words ?? {};
+}

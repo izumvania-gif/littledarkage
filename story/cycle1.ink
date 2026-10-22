@@ -26,7 +26,7 @@
 -> DONE
 
 === c1_concert ===
-#do:walk:kroshkin:stage #do:walk:cherdakov:stage #do:walk:zernov:stage
+#do:pose:kroshkin:play #do:pose:cherdakov:play #do:pose:zernov:play
 Крошкин подкручивает колки, Чердаков пробует бас, Зернов стучит по ведру, которое здесь называют барабаном.
 Где сядешь?
 -> DONE

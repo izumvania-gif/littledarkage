@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { act, beginTurn, creepPhase, endTurn, makeBattle, mishears, relative, smell, strike, targetOf, unit, type Battle, type Fate } from '../src/core/battle.ts';
+import { act, beginTurn, creepPhase, endTurn, makeBattle, mishears, relative, report, smell, strike, targetOf, unit, type Battle, type Fate } from '../src/core/battle.ts';
 
 /** An empty field with the given strikers (facing north, 3 hits, each with a coordinator) and creatures. */
 function field(strikers: [number, number, Fate?][], creatures: [number, number, boolean?][] = []): Battle {
@@ -186,4 +186,91 @@ test('a battle is plain data: saved mid-way, it plays on exactly the same', () =
   const saved = JSON.parse(JSON.stringify(one)) as Battle;
   assert.deepEqual(play(saved), play(one));
   assert.deepEqual(saved, one);
+});
+
+test('a bunk stops a step and cuts a jump short, and the paw feels it', () => {
+  const b = field([[4, 7]]);
+  b.obstacles = [[4, 6]];
+  assert.deepEqual(act(b, 's0', 'step').map((e) => e.t), ['obstacle']);
+  assert.equal(act(b, 's0', 'jump')[0]?.t, 'obstacle');
+  assert.equal(unit(b, 's0').y, 7);
+  // A bunk two cells ahead: the jump lands on the cell before it.
+  const short = field([[4, 7]]);
+  short.obstacles = [[4, 5]];
+  act(short, 's0', 'jump');
+  assert.equal(unit(short, 's0').y, 6);
+});
+
+test('creatures crawl around a bunk; the nearest striker is the nearest by the way round', () => {
+  // A wall of bunks between the creature and the striker straight below it.
+  const b = field([[4, 7], [8, 4]], [[4, 3]]);
+  b.obstacles = [[3, 5], [4, 5], [5, 5], [6, 5], [2, 5], [1, 5], [0, 5], [7, 5]];
+  // As the crow flies s0 is 4 away and s1 4 too; round the wall s0 is far further.
+  assert.equal(targetOf(b, b.creatures[0]!)?.id, 's1');
+  const open = field([[4, 7]], [[4, 4]]);
+  open.obstacles = [[4, 5]];
+  const { ev } = creepPhase(open);
+  const step = ev.find((e) => e.t === 'creep');
+  assert.ok(step && step.t === 'creep');
+  assert.notDeepEqual(step.to, [4, 5]);
+  assert.equal(step.to[1], 4, 'it sidesteps the bunk');
+  for (let i = 0; i < 4; i++) creepPhase(open);
+  assert.ok(creepPhase(open).attacks.length, 'and gets to him in the end');
+});
+
+test('nothing is set up or arrives on an obstacle', () => {
+  const obstacles = [0, 1, 2, 3, 4, 5, 6, 7, 8].flatMap((x): [number, number][] => [[x, 0], [x, 2]]);
+  for (let seed = 1; seed <= 10; seed++) {
+    const b = makeBattle({ seed, pairs: [{ striker: 'a', coord: null, x: 4 }], weak: 6, traps: 3, secrets: 3, obstacles, creatureRows: [0, 3], waves: [{ turn: 1, weak: 6, strong: 2, from: 'all' }], retreatAfter: null, maxTurns: 4 });
+    beginTurn(b);
+    const bad = (x: number, y: number) => obstacles.some(([ox, oy]) => ox === x && oy === y);
+    for (const c of b.creatures) assert.ok(!bad(c.x, c.y), `creature on a bunk at ${c.x},${c.y}`);
+    for (const t of [...b.traps, ...b.secrets]) assert.ok(!bad(t.x, t.y));
+  }
+});
+
+test('a soldier the script takes on a turn is grazed, not killed, before it', () => {
+  const b = field([[4, 7, { dies: 3, spared: true }], [2, 7, { dies: 3 }]]);
+  unit(b, 's0').hp = 1;
+  unit(b, 's1').hp = 1;
+  assert.ok(strike(b, { c: 0, s: 's0' }, false).some((e) => e.t === 'graze'));
+  assert.ok(strike(b, { c: 0, s: 's1' }, false).some((e) => e.t === 'fall'));
+  for (let i = 0; i < 3; i++) {
+    beginTurn(b);
+    endTurn(b);
+  }
+  assert.equal(unit(b, 's0').alive, false);
+});
+
+test('one coordinator may speak for two strikers: he stands at the first', () => {
+  const b = makeBattle({ seed: 3, pairs: [{ striker: 'norkin', coord: 'me', x: 5 }, { striker: 'krypotkin', coord: 'me', x: 3 }], weak: 0, traps: 0, secrets: 0, retreatAfter: null, maxTurns: 4 });
+  assert.equal(b.coords.length, 1);
+  assert.equal(b.coords[0]!.x, 5);
+  assert.deepEqual(b.units.map((u) => u.coord), ['me', 'me']);
+});
+
+test('the report: who fell, a creature taken alive, who crushed how many', () => {
+  const b = field([[4, 7], [1, 7]], [[4, 6], [4, 4], [1, 6]]);
+  unit(b, 's1').bag = true;
+  act(b, 's0', 'step');
+  act(b, 's0', 'jump');
+  act(b, 's1', 'cover');
+  unit(b, 's1').hp = 1;
+  strike(b, { c: 0, s: 's1' }, false);
+  assert.deepEqual(report(b), { fell: ['s1'], caught: true, kills: { s0: 2 } });
+});
+
+test('obstacles are plain data too: a saved field with bunks plays on the same', () => {
+  const setup = { seed: 9, pairs: [{ striker: 'a', coord: null, x: 4 }], weak: 3, traps: 0, secrets: 1, obstacles: [[3, 3], [5, 3], [4, 1]] as [number, number][], waves: [{ turn: 2, weak: 1, strong: 2, from: 'all' as const }], retreatAfter: null, maxTurns: 6 };
+  const play = (b: Battle) => {
+    const ev = [];
+    for (let i = 0; i < 4; i++) {
+      ev.push(...beginTurn(b), ...act(b, 'a', i % 2 ? 'turnL' : 'step'), ...creepPhase(b).ev, ...endTurn(b));
+    }
+    return ev;
+  };
+  const one = makeBattle(setup);
+  play(one);
+  const saved = JSON.parse(JSON.stringify(one)) as Battle;
+  assert.deepEqual(play(saved), play(one));
 });

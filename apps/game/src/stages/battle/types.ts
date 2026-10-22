@@ -7,6 +7,7 @@ import type { Battle } from '../../core/battle.ts';
 import type { BattleMemory } from '../../core/save.ts';
 import type { Settings } from '../../core/settings.ts';
 import type { BattleDef } from '../../content/battles.ts';
+import type { Names } from '../../content/soldiers.ts';
 import type { AudioEngine } from '../../engine/audio.ts';
 import type { Stage } from '../../render/stage.ts';
 
@@ -27,6 +28,11 @@ export interface BattleContext {
   commit(): void;
   /** ?debug: show the true field and «задумал → сказал → сделал». */
   debug: boolean;
+  /**
+   * Display names by soldier id for this run (a soldier who fell comes back under a new name); missing ids go
+   * by their names in content/soldiers.ts.
+   */
+  names?: Names;
 }
 
 /** Why a stage handed control back. */

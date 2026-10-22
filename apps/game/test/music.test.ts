@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { TRACKS } from '../src/content/tracks.ts';
 import { drum, freeverb, pluck } from '../src/engine/music/dsp.ts';
 import { DRUMS } from '../src/engine/music/patterns.ts';
-import { barChords, buildScore, parsePhrase, phraseBeats, RANGES, vary, type TrackId } from '../src/engine/music/score.ts';
+import { seam } from '../src/engine/music/render.ts';
+import { barChords, buildScore, LOOP_OVERHANG_BARS, parsePhrase, phraseBeats, RANGES, vary, type TrackId } from '../src/engine/music/score.ts';
 import { CHORD_NAMES, chord, hz, midi, scale } from '../src/engine/music/theory.ts';
 import { addHarmonica, addPluck, addSynthLead } from '../src/engine/music/voices.ts';
 
@@ -46,14 +47,53 @@ test('the drum grids fit their bars', () => {
   }
 });
 
-test('the tracks are as long as the concept asks (1.5–2.5 minutes, the disco shorter)', () => {
-  const want: Record<TrackId, [number, number]> = { concert: [110, 140], disco: [75, 100], tape: [100, 135] };
+test('the tracks are as long as the concept asks (1.5–2.5 minutes, the disco shorter; the mutiny loops)', () => {
+  const want: Record<TrackId, [number, number]> = { concert: [110, 140], disco: [75, 100], tape: [100, 135], concert2: [110, 145], concert3: [95, 130], riot: [80, 110] };
   for (const id of IDS) {
     const s = buildScore(TRACKS[id]);
     assert.ok(s.duration >= want[id][0] && s.duration <= want[id][1], `${id}: ${s.duration.toFixed(1)} s`);
     const tempo = TRACKS[id].meter[1] === 8 ? TRACKS[id].bpm / 3 : TRACKS[id].bpm;
-    assert.ok(tempo >= 55 && tempo <= 120, `${id} at ${tempo} bpm`);
+    // The mutiny is the one fast thing in the game.
+    if (id !== 'riot') assert.ok(tempo >= 55 && tempo <= 120, `${id} at ${tempo} bpm`);
   }
+  const r = buildScore(TRACKS.riot);
+  assert.ok(r.loop, 'the mutiny loops');
+  assert.ok(r.loop.end - r.loop.start >= 60 && r.loop.start < 12, `loop ${r.loop.start.toFixed(1)}–${r.loop.end.toFixed(1)}`);
+});
+
+test('a loop is whole bars on the grid, and the music past its end is its own first bars again', () => {
+  const s = buildScore(TRACKS.riot);
+  const { start, end } = s.loop!;
+  const bars = (x: number) => (x - s.start) / s.bar;
+  assert.ok(Math.abs(bars(start) - Math.round(bars(start))) < 1e-9 && Math.abs((end - start) / s.bar - Math.round((end - start) / s.bar)) < 1e-9);
+  // Every event of the loop's first bars comes back exactly one loop later, and nothing new starts in the overhang.
+  const len = end - start;
+  const key = (e: (typeof s.events)[number], dt: number) => JSON.stringify({ ...e, t: Math.round((e.t + dt) * 1e6) });
+  const head = s.events.filter((e) => e.t >= start - len && e.t < start - 0.02 && e.t >= start - LOOP_OVERHANG_BARS * s.bar - 0.02);
+  const over = new Set(s.events.filter((e) => e.t >= end - LOOP_OVERHANG_BARS * s.bar - 0.02 && e.t < end - 0.02).map((e) => key(e, 0)));
+  assert.ok(head.length > 20);
+  for (const e of head) assert.ok(over.has(key(e, len)), `missing ${key(e, len)}`);
+  assert.ok(!s.events.some((e) => e.t >= end - 0.02 && e.t < end + 0.015), 'the ending starts after the loop');
+});
+
+test('the seam lands the jump on the sample that came before the loop start', () => {
+  const x = new Float32Array(1000).map((_, i) => Math.sin(i * 0.37) * (i < 500 ? 1 : 0.5));
+  seam([x], 300, 800, 40);
+  assert.equal(x[799], x[299]);
+  assert.ok(Math.abs(x[760]! - Math.sin(760 * 0.37) * 0.5) < 0.05, 'the blend starts at the original');
+});
+
+test('a tired band slips and drags, and the same track stays the same', () => {
+  const tired = buildScore(TRACKS.concert2);
+  const bent = tired.events.filter((e) => e.kind === 'note' && Math.abs(e.cents ?? 0) === 100);
+  assert.ok(bent.length >= 3, `${bent.length} slips`);
+  // The drums fall behind the bar line (the shuffle stretches it a little): late, never by more than a few hundredths.
+  const kicks = tired.events.filter((e) => e.kind === 'hit' && e.hit === 'kick' && e.t >= tired.start);
+  const lateness = kicks.map((k) => (((k.t - tired.start) % tired.bar) + tired.bar) % tired.bar).filter((d) => d < tired.bar / 4);
+  assert.ok(lateness.some((d) => d > 0.009) && Math.max(...lateness) <= 0.04, `lateness ${Math.min(...lateness).toFixed(3)}..${Math.max(...lateness).toFixed(3)}`);
+  // Half the band is gone in the third concert: no drums, no electric.
+  const quiet = buildScore(TRACKS.concert3);
+  assert.ok(!quiet.events.some((e) => e.kind === 'hit' || e.part === 'electric'));
 });
 
 test('a score is the same every time, its events in order, its notes in range', () => {

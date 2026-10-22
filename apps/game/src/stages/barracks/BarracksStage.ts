@@ -58,9 +58,10 @@ class Figure {
   arrive: { y: number; pose: Pose; facing: 'left' | 'right' | null } | null = null;
   done: (() => void) | null = null;
 
-  constructor(id: string, phase: number) {
+  constructor(id: string, phase: number, capped = false) {
     this.id = id;
-    const l = look(id);
+    // The new general wears the general's cap.
+    const l = capped ? { ...look(id), hat: 'cap' as const } : look(id);
     this.size = l.size;
     this.pace = l.pace;
     this.poster = new Puppet(POSTER_COLORS, { look: l, phase });
@@ -112,6 +113,8 @@ export class BarracksStage {
   private readonly figures = new Map<string, Figure>();
   private readonly offLayout: () => void;
   private readonly box: HTMLElement;
+  /** The crate with the creature taken alive in battle 2 (cycle 3), on the poster and as a cut-out. */
+  private crate: { poster: Graphics; truth: Graphics; lid: Graphics[] } | null = null;
   // Lights.
   private light: Light = 'warm';
   private readonly dim = new Graphics().rect(0, 0, REF_W, CAPTION_TOP).fill(0x050404);
@@ -196,6 +199,61 @@ export class BarracksStage {
       f.apply();
     }
     return f;
+  }
+
+  /** Puts the general's cap on someone (the new general), keeping where he stands and how. */
+  cap(id: string): void {
+    const old = this.figures.get(id);
+    const f = new Figure(id, (this.figures.size * 5) % 12, true);
+    if (old) {
+      for (const p of [old.poster, old.truth, old.shadow]) p.root.destroy({ children: true });
+      Object.assign(f, { x: old.x, y: old.y, facing: old.facing, base: old.base });
+      f.visible = old.visible;
+    } else f.visible = false;
+    this.figures.set(id, f);
+    this.room.posterFigures.addChild(f.poster.root);
+    this.room.truthFigures.addChild(f.truth.root);
+    this.room.shadowFigures.addChild(f.shadow.root);
+    f.setPose(f.base);
+    f.apply();
+    this.glasses.invalidate();
+  }
+
+  /**
+   * The crate in the middle of the floor. Nothing of what is inside shows: a dark slit under the lid, and the lid
+   * lifting by a hair now and then, as if something breathed or shifted.
+   */
+  setBox(on: boolean): void {
+    if (!on) {
+      if (this.crate) for (const g of [this.crate.poster, this.crate.truth]) g.destroy({ children: true });
+      this.crate = null;
+      this.glasses.invalidate();
+      return;
+    }
+    if (this.crate) return;
+    const draw = (ink: { wood: number; dark: number; line: number | null }) => {
+      const g = new Graphics();
+      const w = 96;
+      const hh = 58;
+      g.rect(-w / 2, -hh, w, hh).fill(ink.wood);
+      if (ink.line !== null) g.rect(-w / 2, -hh, w, hh).stroke({ width: 3, color: ink.line });
+      for (const y of [-hh * 0.66, -hh * 0.33]) g.moveTo(-w / 2 + 4, y).lineTo(w / 2 - 4, y).stroke({ width: 2, color: ink.dark });
+      g.moveTo(-w / 2 + 6, -6).lineTo(w / 2 - 6, -hh + 6).stroke({ width: 3, color: ink.dark });
+      // The slit under the lid.
+      g.rect(-w / 2 + 6, -hh - 4, w - 12, 4).fill(0x070606);
+      const lid = new Graphics().rect(-w / 2 - 4, -8, w + 8, 8).fill(ink.wood);
+      if (ink.line !== null) lid.rect(-w / 2 - 4, -8, w + 8, 8).stroke({ width: 3, color: ink.line });
+      lid.position.set(0, -hh - 4);
+      g.addChild(lid);
+      g.position.set(SPOTS.center!.x - 70, FLOOR + 6);
+      return { g, lid };
+    };
+    const p = draw({ wood: POSTER.black, dark: POSTER.cream, line: POSTER.cream });
+    const t = draw({ wood: 0x4a3a2e, dark: 0x2b2420, line: null });
+    this.room.posterFigures.addChildAt(p.g, 0);
+    this.room.truthFigures.addChildAt(t.g, 0);
+    this.crate = { poster: p.g, truth: t.g, lid: [p.lid, t.lid] };
+    this.glasses.invalidate();
   }
 
   show(ids: readonly string[]): void {
@@ -437,6 +495,11 @@ export class BarracksStage {
         f.apply();
       }
       if (!this.reduced || f.pose === 'walk' || f.pose === 'play' || f.pose === 'clap') f.step(this.frame);
+    }
+    // The crate's lid: still most of the time, then up by a hair for two frames.
+    if (this.crate) {
+      const up = this.frame % 53 < 2 || this.frame % 89 === 0 ? -2 : 0;
+      for (const lid of this.crate.lid) lid.pivot.y = -up;
     }
     // The player under the keys.
     const r = this.roaming;

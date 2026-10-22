@@ -1,7 +1,7 @@
 /**
- * The coordinator's DOM over the tunnel: the command pad on the right, the coordinators' lines in the zone,
- * the partner's name tag, «Принять удар», the teaching plates of the workshop, notes after a turn, the pause
- * plate and the debug text. Laid out in reference pixels inside a box the size of the 1280×720 frame
+ * The coordinator's DOM over the tunnel: the command pad on the right (with a tab for each striker when the
+ * player speaks for two, battle 3), the coordinators' lines in the zone, the strikers' name tags,
+ * «Принять удар», the teaching plates of the workshop, notes after a turn, the pause plate and the debug text. Laid out in reference pixels inside a box the size of the 1280×720 frame
  * (--u is one reference pixel), so it moves and scales with the picture and grows with «крупный шрифт».
  */
 import './coordinator.css';
@@ -28,12 +28,15 @@ export const PAD: readonly [string, string, Cmd][] = [
 ];
 
 const COUNT = ['Ни одной команды', 'Одна команда', 'Две команды', 'Три команды', 'Четыре команды'];
+const COUNT_ACC = ['ни одной команды', 'одну команду', 'две команды', 'три команды', 'четыре команды'];
 
 export interface PanelHandlers {
   cmd(c: Cmd): void;
   erase(): void;
   done(): void;
   accept(take: boolean): void;
+  /** The player picked whom the next commands are for (battle 3). */
+  target(id: string): void;
 }
 
 export interface PanelNames {
@@ -41,6 +44,17 @@ export interface PanelNames {
   nom: string;
   dat: string;
   acc: string;
+}
+
+/** A striker the player speaks for. */
+export interface PanelStriker extends PanelNames {
+  id: string;
+}
+
+/** A command in the queue and whom it is for. */
+export interface Order {
+  to: string;
+  cmd: Cmd;
 }
 
 export class CoordinatorPanel {
@@ -58,16 +72,23 @@ export class CoordinatorPanel {
   private readonly promptEl: HTMLElement;
   private readonly promptFill: HTMLElement;
   private readonly declineBtn: HTMLButtonElement;
-  private readonly tag: HTMLElement;
+  private readonly tags = new Map<string, HTMLElement>();
+  private readonly tabs = new Map<string, HTMLButtonElement>();
   private readonly hintEl: HTMLElement;
   private readonly noteEl: HTMLElement;
   private readonly pauseEl: HTMLElement;
+  private readonly promptText: HTMLElement;
   readonly debug: HTMLElement;
-  private readonly names: PanelNames;
+  private readonly strikers: readonly PanelStriker[];
+  private names: PanelStriker;
   private readonly untimed: boolean;
   private noteTimer = 0;
+  private phase: Phase = 'idle';
+  private slots = 0;
 
-  constructor(ui: HTMLElement, names: PanelNames, untimed: boolean, on: PanelHandlers) {
+  constructor(ui: HTMLElement, strikers: readonly PanelStriker[], untimed: boolean, on: PanelHandlers) {
+    const names = strikers[0]!;
+    this.strikers = strikers;
     this.names = names;
     this.untimed = untimed;
     const keep = (b: HTMLButtonElement) => {
@@ -81,7 +102,16 @@ export class CoordinatorPanel {
     this.subEl = h('p', { class: 'cs-sub' });
     this.fill = h('i');
     this.barEl = h('div', { class: 'cs-bar' }, this.fill);
-    this.queueEl = h('ol', { class: 'cs-queue', attrs: { 'aria-label': `Команды ${names.dat}` } });
+    this.queueEl = h('ol', { class: 'cs-queue', attrs: { 'aria-label': strikers.length > 1 ? 'Команды' : `Команды ${names.dat}` } });
+    // Two strikers: whom the next command is for («Крыпоткин, шаг вперёд»), by tab, Tab or the digit keys.
+    const tabRow = strikers.length > 1 ? h('div', { class: 'cs-tabs', attrs: { role: 'group', 'aria-label': 'Кому' } }) : null;
+    strikers.forEach((st, i) => {
+      if (!tabRow) return;
+      const b = keep(h('button', { attrs: { type: 'button', 'aria-pressed': String(i === 0) } }, h('kbd', { text: String(i + 1) }), h('span', { text: st.dat })));
+      b.addEventListener('click', () => on.target(st.id));
+      this.tabs.set(st.id, b);
+      tabRow.append(b);
+    });
     const pad = h('div', { class: 'cs-pad' });
     for (const [, key, cmd] of PAD) {
       const b = keep(h('button', { attrs: { type: 'button' } }, h('kbd', { text: key }), h('span', { text: CMD_LABEL[cmd] })));
@@ -94,7 +124,7 @@ export class CoordinatorPanel {
     this.doneBtn = keep(h('button', { class: 'cs-done', attrs: { type: 'button' } }, h('kbd', { text: 'Enter' }), ' Готово'));
     this.eraseBtn.addEventListener('click', () => on.erase());
     this.doneBtn.addEventListener('click', () => on.done());
-    const panel = h('section', { class: 'cs-panel', attrs: { 'aria-label': 'Координатор' } }, this.turnEl, this.phaseEl, this.subEl, this.barEl, this.queueEl, pad, h('div', { class: 'cs-row' }, this.eraseBtn, this.doneBtn));
+    const panel = h('section', { class: 'cs-panel', attrs: { 'aria-label': 'Координатор' } }, this.turnEl, this.phaseEl, this.subEl, this.barEl, this.queueEl, tabRow, pad, h('div', { class: 'cs-row' }, this.eraseBtn, this.doneBtn));
 
     this.promptFill = h('i');
     const acceptBtn = keep(h('button', { class: 'cs-take', attrs: { type: 'button' } }, 'Принять удар ', h('kbd', { text: 'Пробел' })));
@@ -104,12 +134,16 @@ export class CoordinatorPanel {
     this.declineBtn.hidden = !untimed;
     const promptBar = h('div', { class: 'cs-bar' }, this.promptFill);
     promptBar.hidden = untimed;
-    this.promptEl = h('div', { class: 'cs-accept', attrs: { role: 'alert' } }, h('p', { text: `${names.acc} бьют!` }), h('div', { class: 'cs-row' }, acceptBtn, this.declineBtn), promptBar);
+    this.promptText = h('p', { text: `${names.acc} бьют!` });
+    this.promptEl = h('div', { class: 'cs-accept', attrs: { role: 'alert' } }, this.promptText, h('div', { class: 'cs-row' }, acceptBtn, this.declineBtn), promptBar);
     this.promptEl.hidden = true;
 
-    this.tag = h('p', { class: 'cs-tag', text: names.nom, attrs: { 'aria-hidden': 'true' } });
-    // Shown once the first flash has placed it.
-    this.tag.hidden = true;
+    for (const st of strikers) {
+      const tag = h('p', { class: 'cs-tag', text: st.nom, attrs: { 'aria-hidden': 'true' } });
+      // Shown once the first flash has placed it.
+      tag.hidden = true;
+      this.tags.set(st.id, tag);
+    }
     this.hintEl = h('p', { class: 'cs-hint', attrs: { 'aria-live': 'polite' } });
     this.hintEl.hidden = true;
     this.noteEl = h('p', { class: 'cs-note', attrs: { 'aria-live': 'polite' } });
@@ -118,7 +152,7 @@ export class CoordinatorPanel {
     this.pauseEl.hidden = true;
     this.debug = h('pre', { class: 'cs-debug' });
     this.debug.hidden = true;
-    this.box = h('div', { class: 'cs' }, panel, this.promptEl, this.tag, this.hintEl, this.noteEl, this.pauseEl, this.debug);
+    this.box = h('div', { class: 'cs' }, panel, this.promptEl, ...this.tags.values(), this.hintEl, this.noteEl, this.pauseEl, this.debug);
     this.root = this.box;
     ui.append(this.box);
   }
@@ -138,12 +172,18 @@ export class CoordinatorPanel {
   }
 
   setPhase(p: Phase, slots: number): void {
+    this.phase = p;
+    this.slots = slots;
     const n = this.names;
+    const two = this.speakingForTwo();
+    this.box.dataset.two = two ? '1' : '';
     const text: Record<Phase, [string, string]> = {
       idle: ['', ''],
       plan: ['Смотри на поле', this.untimed ? 'Лампа мигает раз в две секунды. Время не идёт. Любая команда или Enter — говорить.' : 'Лампа мигает раз в две секунды. Любая команда или Enter — говорить.'],
-      orders: [`Команды ${n.dat}`, `${COUNT[Math.min(slots, 4)]}, от его лица. Enter — готово.`],
-      exec: [`${n.nom} исполняет`, 'Каждый шаг — вспышка.'],
+      orders: two
+        ? [`Команды ${n.dat}`, `${cap(COUNT_ACC[Math.min(slots, 4)]!)} на двоих, каждому от его лица. Tab — кому.`]
+        : [`Команды ${n.dat}`, `${COUNT[Math.min(slots, 4)]}, от его лица. Enter — готово.`],
+      exec: [two ? 'Исполняют' : `${n.nom} исполняет`, 'Каждый шаг — вспышка.'],
       prompt: [`${n.acc} бьют`, ''],
     };
     const [title, sub] = text[p];
@@ -151,6 +191,7 @@ export class CoordinatorPanel {
     this.subEl.textContent = sub;
     const live = p === 'plan' || p === 'orders';
     for (const b of this.buttons) b.disabled = !live;
+    for (const b of this.tabs.values()) b.disabled = !live || b.dataset.gone === '1';
     this.eraseBtn.disabled = p !== 'orders';
     this.doneBtn.disabled = !live;
     this.barEl.style.visibility = live && !this.untimed ? 'visible' : 'hidden';
@@ -161,17 +202,44 @@ export class CoordinatorPanel {
     this.fill.style.transform = `scaleX(${Math.max(0, Math.min(1, frac))})`;
   }
 
-  setQueue(q: readonly Cmd[], slots: number): void {
+  setQueue(q: readonly Order[], slots: number): void {
+    const two = this.strikers.length > 1;
     this.queueEl.replaceChildren(
       ...Array.from({ length: Math.max(slots, q.length) }, (_, i) => {
-        const c = q[i];
-        return h('li', { class: c ? 'filled' : '', text: c ? `${i + 1}. ${CMD_LABEL[c]}` : `${i + 1}. —` });
+        const o = q[i];
+        const who = o && two ? `${this.strikers.find((st) => st.id === o.to)?.nom ?? ''}: ` : '';
+        return h('li', { class: o ? 'filled' : '', text: o ? `${i + 1}. ${who}${CMD_LABEL[o.cmd]}` : `${i + 1}. —` });
       }),
     );
     this.doneBtn.classList.toggle('ready', slots > 0 && q.length >= slots);
   }
 
-  prompt(on: boolean): void {
+  /** Whom the next commands are for: the tab, and the titles that name him. */
+  setTarget(id: string): void {
+    const st = this.strikers.find((it) => it.id === id);
+    if (!st) return;
+    this.names = st;
+    for (const [tid, b] of this.tabs) b.setAttribute('aria-pressed', String(tid === id));
+    this.setPhase(this.phase, this.slots);
+  }
+
+  /** A fallen striker's tab is shut. */
+  setGone(id: string): void {
+    const b = this.tabs.get(id);
+    if (!b) return;
+    b.dataset.gone = '1';
+    b.disabled = true;
+    this.setPhase(this.phase, this.slots);
+  }
+
+  /** More than one striker is still listening to the player. */
+  private speakingForTwo(): boolean {
+    return [...this.tabs.values()].filter((b) => b.dataset.gone !== '1').length > 1;
+  }
+
+  /** «Принять удар» for this striker (or hidden). */
+  prompt(on: boolean, acc?: string): void {
+    if (acc) this.promptText.textContent = `${acc} бьют!`;
     this.promptEl.hidden = !on;
   }
 
@@ -179,15 +247,17 @@ export class CoordinatorPanel {
     this.promptFill.style.transform = `scaleX(${Math.max(0, Math.min(1, frac))})`;
   }
 
-  /** The partner's name under his last known position (it moves only with the flashes). */
-  moveTag(x: number, y: number, visible: boolean): void {
-    this.tag.hidden = !visible;
-    this.tag.style.left = `calc(${x} * var(--u))`;
-    this.tag.style.top = `calc(${y} * var(--u))`;
+  /** A striker's name under his last known position (it moves only with the flashes). */
+  moveTag(id: string, x: number, y: number, visible: boolean): void {
+    const tag = this.tags.get(id);
+    if (!tag) return;
+    tag.hidden = !visible;
+    tag.style.left = `calc(${x} * var(--u))`;
+    tag.style.top = `calc(${y} * var(--u))`;
   }
 
   tagOpacity(a: number): void {
-    this.tag.style.opacity = String(a);
+    for (const tag of this.tags.values()) tag.style.opacity = String(a);
   }
 
   /** A teaching plate of the workshop, or nothing. */
@@ -231,3 +301,5 @@ export class CoordinatorPanel {
     this.box.remove();
   }
 }
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

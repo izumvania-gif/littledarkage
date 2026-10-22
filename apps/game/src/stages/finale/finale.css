@@ -1,0 +1,240 @@
+/*
+ * The finale: replies in the dark, the general's desk, the title. Cream on black and ink on paper, all 4.5:1 or
+ * better (the stamp's red is lightened for the dark: #e0675c on #0f0e0d is 5.7:1).
+ */
+
+/* ---------- the dark: replies that never arrived ---------- */
+
+.fn-dark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  color: var(--cream);
+}
+
+.fn-reply {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 38rem;
+  opacity: 0;
+  transition: opacity 1.6s ease-in;
+}
+
+.fn-reply.fn-in {
+  opacity: 1;
+}
+
+.fn-reply.fn-out {
+  opacity: 0;
+  transition-duration: 0.5s;
+}
+
+.fn-reduced .fn-reply {
+  transition: none;
+}
+
+.fn-reply p {
+  margin: 0;
+}
+
+.fn-reply-head {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--muted-dark);
+}
+
+.fn-reply-text {
+  max-height: 58vh;
+  overflow-y: auto;
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fn-reply-stamp {
+  justify-self: end;
+  padding: 0.1rem 0.5rem;
+  border: 2px solid #e0675c;
+  color: #e0675c;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+
+.fn-hint {
+  position: absolute;
+  right: 2rem;
+  bottom: 1.6rem;
+  margin: 0;
+  color: var(--muted-dark);
+  font-size: 0.9rem;
+}
+
+.fn-hint .key {
+  border-color: var(--muted-dark);
+  color: var(--muted-dark);
+}
+
+/* The speech that types itself: no «Пробел — дальше» while nothing can hurry it. */
+.caption.fn-locked .cap-hint {
+  display: none !important;
+}
+
+/* ---------- the general's desk ---------- */
+
+.fn-desk {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.fn-desk > * {
+  position: absolute;
+  margin: 0;
+}
+
+.fn-page {
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: max(10px, calc(13.5 * var(--u)));
+  line-height: 1.3;
+}
+
+.fn-page p {
+  margin: 0;
+}
+
+.fn-book-title {
+  margin-bottom: calc(14 * var(--u)) !important;
+  color: var(--red-deep);
+  font-family: var(--poster);
+  font-size: max(10px, calc(14 * var(--u)));
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.fn-more {
+  color: #4a4238;
+}
+
+.fn-entries {
+  display: grid;
+  gap: calc(9 * var(--u));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fn-name {
+  position: relative;
+  font-weight: 700;
+}
+
+.fn-note {
+  color: #4a4238;
+}
+
+.fn-crossed .fn-name {
+  color: var(--muted-cream);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+/* The general's pen drawing the line through the player's name. */
+.fn-striking:not(.fn-crossed) .fn-name::after {
+  content: '';
+  position: absolute;
+  left: -0.1em;
+  top: 55%;
+  height: 2px;
+  background: var(--ink);
+  animation: fn-strike 0.9s steps(9) forwards;
+}
+
+@keyframes fn-strike {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(100% + 0.2em);
+  }
+}
+
+.fn-tri {
+  display: grid;
+  justify-items: center;
+  gap: calc(3 * var(--u));
+  color: #22304a;
+  text-align: center;
+}
+
+.fn-tri p {
+  margin: 0;
+}
+
+.fn-tri-to {
+  font-family: var(--hand);
+  font-size: max(10px, calc(15 * var(--u)));
+  line-height: 1.1;
+}
+
+.fn-stamp {
+  padding: 0 0.35em;
+  border: 1.5px solid #4a2b63;
+  color: #4a2b63;
+  font-family: var(--mono);
+  font-size: max(9px, calc(10 * var(--u)));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+}
+
+.fn-env-to {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: max(10px, calc(16 * var(--u)));
+  text-align: center;
+}
+
+/* ---------- the title ---------- */
+
+.fn-title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2rem;
+  background: var(--dark);
+  opacity: 0;
+  transition: opacity 2.4s ease-in;
+}
+
+.fn-title.fn-in {
+  opacity: 1;
+}
+
+.fn-reduced.fn-title {
+  transition: none;
+}
+
+.fn-title h1 {
+  margin: 0;
+  color: var(--cream);
+  font-family: var(--poster);
+  font-size: clamp(1.8rem, 4.6vw, 4.2rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}

@@ -33,6 +33,12 @@ export interface StoryHost {
   flag(name: string): boolean;
   flag_set(name: string): void;
   hp(): number;
+  /** The name a face goes by now (Сырков's face is «Пышкин» after he fell); `player_former` is the player's last name before coming back. */
+  who(face: string): string;
+  /** 0 рядовой, 1 ефрейтор, 2 младший сержант, 3 сержант. */
+  rank_of(face: string): number;
+  /** Which chill: 1, 2 or 3. */
+  cycle(): number;
 }
 
 export class StoryEngine {
@@ -52,6 +58,9 @@ export class StoryEngine {
     this.story.BindExternalFunction('trust', (id: string) => host.trust(id), true);
     this.story.BindExternalFunction('flag', (f: string) => host.flag(f), true);
     this.story.BindExternalFunction('hp', () => host.hp(), true);
+    this.story.BindExternalFunction('who', (face: string) => host.who(face), true);
+    this.story.BindExternalFunction('rank_of', (face: string) => host.rank_of(face), true);
+    this.story.BindExternalFunction('cycle', () => host.cycle(), true);
     this.story.BindExternalFunction(
       'trust_add',
       (id: string, by: number) => {

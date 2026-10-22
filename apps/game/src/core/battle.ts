@@ -3,7 +3,8 @@
  * The whole state is plain JSON, the random generator included, so a battle saves after every turn and
  * plays the same way again from that save. The stages (stages/battle/*) only draw it and collect commands.
  *
- * Grid: x 0..8 left to right, y 0..8 far to near; the coordinators' zone lies past y = 8.
+ * Grid: x 0..8 left to right, y 0..8 far to near; the coordinators' zone lies past y = 8. A field may have
+ * obstacles (the bunks of the barracks in the dark): nobody steps, jumps or crawls through them.
  * A turn: beginTurn → stepPhase for each command (all strikers at once) → creepPhase → strike for each
  * attack (the coordinator may take the blow) → endTurn.
  */
@@ -43,9 +44,10 @@ export const ORDERS: readonly Cmd[] = ['step', 'step2', 'back', 'left', 'right',
  * How the simulation may end a soldier.
  * - free: the battle decides (the player's partner, soldiers of other pairs);
  * - spared: a named soldier who lives to his scenes — a blow that would kill him leaves him on one hit;
- * - dies: the script takes him at the end of that turn at the latest (Сырков in battle 1, everyone in battle 3).
+ * - dies: the script takes him at the end of that turn at the latest (Сырков in battle 1, everyone in battle 3);
+ *   with `spared` nothing else takes him before then, so the script's order holds.
  */
-export type Fate = 'free' | 'spared' | { dies: number };
+export type Fate = 'free' | 'spared' | { dies: number; spared?: boolean };
 
 export interface Unit {
   id: string;
@@ -90,6 +92,8 @@ export interface Creature {
   alive: boolean;
   /** Taken alive in a sack. */
   caught: boolean;
+  /** Who crushed it or took it alive. */
+  by?: string;
 }
 
 export type TrapKind = 'pit' | 'mine' | 'snare';
@@ -134,6 +138,8 @@ export interface Battle {
   traps: Trap[];
   secrets: Secret[];
   waves: Wave[];
+  /** Cells nobody can enter (absent in battles saved before there were any). */
+  obstacles?: Cell[];
   nextId: number;
   over: boolean;
   outcome: Outcome | null;
@@ -146,6 +152,7 @@ export type Ev =
   | { t: 'jump'; s: string; from: Cell; to: Cell }
   | { t: 'turn'; s: string; dir: Dir }
   | { t: 'wall'; s: string }
+  | { t: 'obstacle'; s: string; at: Cell }
   | { t: 'bump'; s: string; other: string }
   | { t: 'blocked'; s: string; c: number }
   | { t: 'crush'; s: string; c: number; strong: boolean; at: Cell }
@@ -188,6 +195,62 @@ export function unitAt(b: Battle, x: number, y: number): Unit | undefined {
 
 export function creatureAt(b: Battle, x: number, y: number): Creature | undefined {
   return b.creatures.find((c) => c.alive && c.x === x && c.y === y);
+}
+
+/** The obstacles as a grid, and the ways to each cell around them, kept per obstacle list (they never move). */
+const grids = new WeakMap<readonly Cell[], { blocked: Uint8Array; ways: Map<number, readonly number[]> }>();
+
+function grid(b: Battle): { blocked: Uint8Array; ways: Map<number, readonly number[]> } | null {
+  const list = b.obstacles;
+  if (!list?.length) return null;
+  let g = grids.get(list);
+  if (!g) {
+    const blocked = new Uint8Array(SIZE * SIZE);
+    for (const [x, y] of list) if (inside(x, y)) blocked[y * SIZE + x] = 1;
+    g = { blocked, ways: new Map() };
+    grids.set(list, g);
+  }
+  return g;
+}
+
+export function obstacleAt(b: Battle, x: number, y: number): boolean {
+  const g = grid(b);
+  return !!g && inside(x, y) && g.blocked[y * SIZE + x] === 1;
+}
+
+/**
+ * Steps from (x, y) to every cell going around the obstacles (Infinity where there is no way), indexed
+ * y * SIZE + x. On an open field it is just the count of steps.
+ */
+export function distances(b: Battle, x: number, y: number): readonly number[] {
+  const g = grid(b);
+  const key = y * SIZE + x;
+  const known = g?.ways.get(key);
+  if (known) return known;
+  const d = new Array<number>(SIZE * SIZE).fill(Infinity);
+  if (!inside(x, y)) return d;
+  d[key] = 0;
+  const queue: number[] = [key];
+  for (let i = 0; i < queue.length; i++) {
+    const at = queue[i]!;
+    const cx = at % SIZE;
+    const cy = (at - cx) / SIZE;
+    for (let dir = 0; dir < 4; dir++) {
+      const nx = cx + DX[dir]!;
+      const ny = cy + DY[dir]!;
+      const n = ny * SIZE + nx;
+      if (!inside(nx, ny) || d[n]! <= d[at]! + 1 || g?.blocked[n]) continue;
+      d[n] = d[at]! + 1;
+      queue.push(n);
+    }
+  }
+  g?.ways.set(key, d);
+  return d;
+}
+
+/** The way from a to b in steps, around the obstacles if there are any. */
+function way(b: Battle, ax: number, ay: number, bx: number, by: number): number {
+  return b.obstacles?.length ? distances(b, bx, by)[ay * SIZE + ax]! : steps(ax, ay, bx, by);
 }
 
 /** A world offset seen from a unit facing dir: how far to its right and ahead. */
@@ -290,7 +353,7 @@ function arrive(b: Battle, w: Wave, ev: Ev[]): void {
   const spawn = (strong: boolean) => {
     for (let tries = 0; tries < 30; tries++) {
       const [x, y] = edge();
-      if (creatureAt(b, x, y) || unitAt(b, x, y)) continue;
+      if (creatureAt(b, x, y) || unitAt(b, x, y) || obstacleAt(b, x, y)) continue;
       const c: Creature = { id: b.nextId++, x, y, strong, alive: true, caught: false };
       b.creatures.push(c);
       ev.push({ t: 'arrive', c: c.id, at: [x, y], strong });
@@ -307,6 +370,10 @@ function enter(b: Battle, u: Unit, x: number, y: number, landing: boolean, ev: E
     ev.push({ t: 'wall', s: u.id });
     return false;
   }
+  if (obstacleAt(b, x, y)) {
+    ev.push({ t: 'obstacle', s: u.id, at: [x, y] });
+    return false;
+  }
   const other = unitAt(b, x, y);
   if (other) {
     ev.push({ t: 'bump', s: u.id, other: other.id });
@@ -319,6 +386,7 @@ function enter(b: Battle, u: Unit, x: number, y: number, landing: boolean, ev: E
       return false;
     }
     c.alive = false;
+    c.by = u.id;
     ev.push({ t: 'crush', s: u.id, c: c.id, strong: c.strong, at: [x, y] });
   }
   const from: Cell = [u.x, u.y];
@@ -396,18 +464,24 @@ export function act(b: Battle, id: string, cmd: Cmd): Ev[] {
   return ev;
 }
 
-/** A jump covers up to u.jump cells and lands on the first creature in the way, killing it, strong or weak. Cells flown over are not touched. */
+/**
+ * A jump covers up to u.jump cells and lands on the first creature in the way, killing it, strong or weak.
+ * Cells flown over are not touched; a wall, a soldier or an obstacle ends it short.
+ */
 function jump(b: Battle, u: Unit, ev: Ev[]): void {
   let land = 0;
   for (let k = 1; k <= u.jump; k++) {
     const x = u.x + DX[u.dir] * k;
     const y = u.y + DY[u.dir] * k;
-    if (!inside(x, y) || unitAt(b, x, y)) break;
+    if (!inside(x, y) || unitAt(b, x, y) || obstacleAt(b, x, y)) break;
     land = k;
     if (creatureAt(b, x, y)) break;
   }
   if (land === 0) {
-    ev.push({ t: 'wall', s: u.id });
+    const x = u.x + DX[u.dir];
+    const y = u.y + DY[u.dir];
+    if (obstacleAt(b, x, y)) ev.push({ t: 'obstacle', s: u.id, at: [x, y] });
+    else ev.push({ t: 'wall', s: u.id });
     return;
   }
   enter(b, u, u.x + DX[u.dir] * land, u.y + DY[u.dir] * land, true, ev);
@@ -425,6 +499,7 @@ function cover(b: Battle, u: Unit, ev: Ev[]): void {
   u.bag = false;
   c.alive = false;
   c.caught = true;
+  c.by = u.id;
   ev.push({ t: 'capture', s: u.id, c: c.id, at: [x, y] });
 }
 
@@ -445,13 +520,13 @@ export function phases(b: Battle): number {
   return Math.max(0, ...b.units.filter((u) => u.alive).map((u) => u.actions));
 }
 
-/** The striker a creature crawls to: fewest steps, then nearer the coordinators, then first in field order. */
+/** The striker a creature crawls to: fewest steps (around obstacles), then nearer the coordinators, then first in field order. */
 export function targetOf(b: Battle, c: Creature): Unit | undefined {
   let best: Unit | undefined;
   let bestD = Infinity;
   for (const u of b.units) {
     if (!u.alive) continue;
-    const d = steps(c.x, c.y, u.x, u.y);
+    const d = way(b, c.x, c.y, u.x, u.y);
     if (d < bestD || (d === bestD && best && u.y > best.y)) {
       best = u;
       bestD = d;
@@ -466,13 +541,15 @@ export interface Attack {
 }
 
 /**
- * Creatures crawl one cell each, straight only, along the longer gap first (the vertical one on a tie).
+ * Creatures crawl one cell each, straight only, along the longer gap first (the vertical one on a tie); an
+ * obstacle in the way is crawled around, by whichever cell brings them nearer.
  * Crawling into a striker is an attack: the creature stays put, and the caller resolves it with strike()
  * (the striker takes the blow, or his coordinator does with «Принять удар»).
  */
 export function creepPhase(b: Battle): { ev: Ev[]; attacks: Attack[] } {
   const ev: Ev[] = [];
   const attacks: Attack[] = [];
+  const around = !!b.obstacles?.length;
   for (const c of b.creatures) {
     if (!c.alive) continue;
     const target = targetOf(b, c);
@@ -482,8 +559,19 @@ export function creepPhase(b: Battle): { ev: Ev[]; attacks: Attack[] } {
     const vertical: Cell = [c.x, c.y + dy];
     const horizontal: Cell = [c.x + dx, c.y];
     const order = Math.abs(target.y - c.y) >= Math.abs(target.x - c.x) ? [vertical, horizontal] : [horizontal, vertical];
+    let nearer = (_x: number, _y: number) => true;
+    if (around) {
+      const d = distances(b, target.x, target.y);
+      const here = d[c.y * SIZE + c.x]!;
+      nearer = (x, y) => d[y * SIZE + x]! < here;
+      // With the straight cells shut, the sideways ones that still lead to him.
+      for (let dir = 0; dir < 4; dir++) {
+        const cell: Cell = [c.x + DX[dir]!, c.y + DY[dir]!];
+        if (!order.some(([x, y]) => x === cell[0] && y === cell[1])) order.push(cell);
+      }
+    }
     for (const [x, y] of order) {
-      if ((x === c.x && y === c.y) || !inside(x, y) || creatureAt(b, x, y)) continue;
+      if ((x === c.x && y === c.y) || !inside(x, y) || creatureAt(b, x, y) || obstacleAt(b, x, y) || !nearer(x, y)) continue;
       const u = unitAt(b, x, y);
       if (u) {
         attacks.push({ c: c.id, s: u.id });
@@ -518,7 +606,7 @@ export function strike(b: Battle, a: Attack, byCoordinator: boolean): Ev[] {
 }
 
 function hurt(b: Battle, u: Unit, ev: Ev[]): void {
-  if (u.fate === 'spared' && u.hp <= 1) {
+  if ((u.fate === 'spared' || (typeof u.fate === 'object' && u.fate.spared)) && u.hp <= 1) {
     ev.push({ t: 'graze', s: u.id });
     return;
   }
@@ -608,11 +696,14 @@ export interface BattleSetup {
   creatureRows?: Cell;
   /** Columns they start in (the whole width by default). */
   creatureCols?: Cell;
+  /** Cells nobody can enter: the bunks of the barracks. */
+  obstacles?: readonly Cell[];
 }
 
 /**
  * A field from a setup: strikers on the near rows facing away from the coordinators, creatures on the
- * far rows, traps and secrets in between, nothing within two steps of a striker.
+ * far rows, traps and secrets in between, nothing within two steps of a striker or on an obstacle.
+ * One coordinator may speak for several strikers (the player in battle 3): he stands at his first one.
  */
 export function makeBattle(setup: BattleSetup): Battle {
   const b: Battle = {
@@ -626,15 +717,16 @@ export function makeBattle(setup: BattleSetup): Battle {
     traps: [],
     secrets: [],
     waves: (setup.waves ?? []).map((w) => ({ ...w })),
+    ...(setup.obstacles?.length ? { obstacles: setup.obstacles.map(([x, y]): Cell => [x, y]) } : {}),
     nextId: 1,
     over: false,
     outcome: null,
   };
   for (const p of setup.pairs) {
     b.units.push({ id: p.striker, x: p.x, y: p.y ?? 7, dir: 0, hp: p.hp ?? MAX_HP, alive: true, jump: p.jump ?? 2, lost: 0, bonus: 0, actions: ACTIONS_PER_TURN, sniffed: false, bag: p.bag ?? false, coord: p.coord, fate: p.fate ?? 'free' });
-    if (p.coord) b.coords.push({ id: p.coord, x: p.x, hp: p.coordHp ?? MAX_HP, alive: true, ...(p.coordDies ? { dies: p.coordDies } : {}), ...(p.coordWalksOut ? { walksOut: true } : {}) });
+    if (p.coord && !b.coords.some((c) => c.id === p.coord)) b.coords.push({ id: p.coord, x: p.x, hp: p.coordHp ?? MAX_HP, alive: true, ...(p.coordDies ? { dies: p.coordDies } : {}), ...(p.coordWalksOut ? { walksOut: true } : {}) });
   }
-  const used = new Set(b.units.map((u) => `${u.x},${u.y}`));
+  const used = new Set([...b.units.map((u) => `${u.x},${u.y}`), ...(b.obstacles ?? []).map(([x, y]) => `${x},${y}`)]);
   const place = ([from, to]: Cell, [left, right]: Cell = [0, SIZE - 1]): Cell => {
     for (let tries = 0; tries < 800; tries++) {
       const x = left + pick(b, right - left + 1);
@@ -660,4 +752,22 @@ export function makeBattle(setup: BattleSetup): Battle {
     b.secrets.push({ x, y, kind: i % 2 === 0 ? 'action' : 'hp', taken: false });
   }
   return b;
+}
+
+// ---------- what a battle leaves behind ----------
+
+export interface BattleReport {
+  /** Strikers who fell, in field order. */
+  fell: string[];
+  /** A creature was taken alive in a sack. */
+  caught: boolean;
+  /** Creatures crushed, by striker. */
+  kills: Record<string, number>;
+}
+
+/** What the story takes from a finished (or abandoned) battle. */
+export function report(b: Battle): BattleReport {
+  const kills: Record<string, number> = {};
+  for (const c of b.creatures) if (!c.alive && !c.caught && c.by) kills[c.by] = (kills[c.by] ?? 0) + 1;
+  return { fell: b.units.filter((u) => !u.alive).map((u) => u.id), caught: b.creatures.some((c) => c.caught), kills };
 }

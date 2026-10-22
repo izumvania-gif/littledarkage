@@ -4,6 +4,9 @@
  * partner his commands from his side, then watch them carried out one flash a step, the creatures crawl,
  * and decide in two seconds whether to take a blow meant for him («Принять удар»).
  *
+ * In battle 3 the player speaks for two: the partner and Крыпоткин, who has nobody else. The three commands
+ * of a turn are shared between them (a tab says whom the next one is for), and a blow on either may be taken.
+ *
  * Every flash renders the scene once into a snapshot texture; between flashes only that snapshot is shown,
  * fading over darkness. The poster («Красные очки») is rebaked only at a flash, when something moved.
  */
@@ -12,7 +15,7 @@ import { perform, plan, takesBlow, type Mood } from '../../core/ai.ts';
 import { act, beginTurn, CMD_LABEL, creepPhase, endTurn, mishears, phases, strike, unit, type Battle, type Cmd, type Ev } from '../../core/battle.ts';
 import { say } from '../../core/voice.ts';
 import { TUNING, type BattleDef } from '../../content/battles.ts';
-import { PLAYER_ID, SOLDIERS } from '../../content/soldiers.ts';
+import { nameOf, PLAYER_ID, SOLDIERS, wordsOf } from '../../content/soldiers.ts';
 import { BattleSound } from '../../engine/spatial.ts';
 import { glowTexture } from '../../render/kit.ts';
 import { REF_H, REF_W } from '../../render/palette.ts';
@@ -21,7 +24,8 @@ import type { Fit } from '../../render/stage.ts';
 import { isTyping } from '../../ui/dom.ts';
 import { BATTLE_HOLES, BattleField, type Scene } from './coordinator/field.ts';
 import { FIELD_BOTTOM, heardAt, LAMP, pt, ZONE_Y, zoneX } from './coordinator/geometry.ts';
-import { CoordinatorPanel, PAD, type Phase } from './coordinator/panel.ts';
+import { CoordinatorPanel, PAD, type Order, type Phase } from './coordinator/panel.ts';
+import { cases } from './cases.ts';
 import { bump, type BattleContext, type BattleStage, type StageExit } from './types.ts';
 
 /** A flash never comes sooner than this after the last one: no more than three a second. */
@@ -30,10 +34,7 @@ const MIN_FLASH_GAP = 1000 / 3;
 const MOVES: readonly Cmd[] = ['step', 'step2', 'back', 'left', 'right', 'jump'];
 const TURNS: readonly Cmd[] = ['turnL', 'turnR', 'about'];
 
-/** Names in the cases the lines need (Норкин → Норкину, Норкина; Корочкина → Корочкиной, Корочкину). */
-const acc = (name: string) => (name.endsWith('а') ? `${name.slice(0, -1)}у` : name.endsWith('ой') ? `${name.slice(0, -2)}ого` : `${name}а`);
-const dat = (name: string) => (name.endsWith('а') ? `${name.slice(0, -1)}ой` : name.endsWith('ой') ? `${name.slice(0, -2)}ому` : `${name}у`);
-const nameOf = (id: string) => SOLDIERS[id]?.name ?? id;
+const TARGET_KEYS = ['Digit1', 'Digit2', 'Digit3'];
 
 /** What an NPC pair is up to this turn, for the lines and the debug layer «задумал → сказал → сделал». */
 interface NpcTurn {
@@ -66,12 +67,17 @@ export class CoordinatorStage implements BattleStage {
   private readonly calm: boolean;
   private readonly untimed: boolean;
   private readonly partner: string;
+  /** The strikers the player speaks for, the partner first (two in battle 3). */
+  private readonly mine: string[];
+  /** Whom the next command is for. */
+  private target: string;
 
   private crushed: Scene['crushed'] = [];
   /** NPC strikers hit last turn (they tremble; quirks switched on). The partner's state is in ctx.memory. */
   private scared = new Set<string>();
   private npc = new Map<string, NpcTurn>();
-  private partnerDid: string[] = [];
+  /** What each of the player's strikers did this turn, for the debug layer. */
+  private mineDid = new Map<string, string[]>();
 
   // Game time: stops while paused or the tab is hidden.
   private clock = 0;
@@ -88,7 +94,7 @@ export class CoordinatorStage implements BattleStage {
   private phaseEnd = Infinity;
   private phaseLength = 1;
   private phaseResolve: ((r: 'input' | 'timeout') => void) | null = null;
-  private queue: Cmd[] = [];
+  private queue: Order[] = [];
   private slots = 0;
   private choice: boolean | null = null;
   private speeches: HTMLElement[] = [];
@@ -107,6 +113,8 @@ export class CoordinatorStage implements BattleStage {
     this.b = ctx.battle;
     this.def = ctx.def;
     this.partner = ctx.def.partner;
+    this.mine = [this.partner, ...this.b.units.filter((u) => u.coord === PLAYER_ID && u.id !== this.partner).map((u) => u.id)];
+    this.target = this.partner;
     this.sound = new BattleSound(ctx.audio);
     this.calm = ctx.settings.reduceFlashes || ctx.reduced;
     this.untimed = ctx.settings.noTimer;
@@ -132,13 +140,19 @@ export class CoordinatorStage implements BattleStage {
     this.view.addChild(new Graphics().rect(0, 0, REF_W, REF_H).fill(0x070606), this.snapSprite, this.wash, this.lampGlow, this.tallies, this.truthLayer);
     ctx.stage.root.addChild(this.view);
 
-    const n = nameOf(this.partner);
-    this.panel = new CoordinatorPanel(ctx.ui, { nom: n, dat: dat(n), acc: acc(n) }, this.untimed, {
-      cmd: (c) => this.push(c),
-      erase: () => this.erase(),
-      done: () => this.done(),
-      accept: (take) => this.decide(take),
-    });
+    this.panel = new CoordinatorPanel(
+      ctx.ui,
+      this.mine.map((id) => ({ id, ...cases(this.name(id)) })),
+      this.untimed,
+      {
+        cmd: (c) => this.push(c),
+        erase: () => this.erase(),
+        done: () => this.done(),
+        accept: (take) => this.decide(take),
+        target: (id) => this.aim(id),
+      },
+    );
+    for (const id of this.mine) if (!unit(this.b, id).alive) this.panel.setGone(id);
     this.panel.debug.hidden = !ctx.debug;
     this.panel.setPhase('idle', 0);
     this.offLayout = ctx.stage.onLayout((fit) => this.layout(fit));
@@ -163,14 +177,17 @@ export class CoordinatorStage implements BattleStage {
   private async turn(): Promise<StageExit | null> {
     const b = this.b;
     this.handle(beginTurn(b));
-    const partner = unit(b, this.partner);
-    this.slots = partner.alive ? partner.actions : 0;
+    // Three commands a turn (more after a secret), shared when he speaks for two.
+    const living = this.mine.map((id) => unit(b, id)).filter((u) => u.alive);
+    this.slots = Math.max(0, ...living.map((u) => u.actions));
+    if (!unit(b, this.target).alive && living[0]) this.aim(living[0].id);
     this.queue = [];
-    this.partnerDid = [];
+    this.mineDid = new Map(this.mine.map((id) => [id, []]));
     this.clearSpeech();
     this.panel.setTurn(b.turn, b.maxTurns);
     this.panel.setQueue(this.queue, this.slots);
     this.bump('turns');
+    if (b.turn === 1 && this.def.goal && this.mine.includes(this.def.goal.striker)) this.panel.note(this.def.goal.note, 12000);
 
     // Look: nothing moves while the coordinators look, and the lamp keeps time.
     this.npc = this.planNpcs();
@@ -190,8 +207,9 @@ export class CoordinatorStage implements BattleStage {
     this.panel.hint(null);
     const said = [...this.queue];
     this.bump('orders', said.length);
-    const firstMove = said.findIndex((c) => MOVES.includes(c));
-    if (firstMove > 0 && said.slice(0, firstMove).some((c) => TURNS.includes(c))) this.bump('turnedFirst');
+    const toPartner = said.filter((o) => o.to === this.partner).map((o) => o.cmd);
+    const firstMove = toPartner.findIndex((c) => MOVES.includes(c));
+    if (firstMove > 0 && toPartner.slice(0, firstMove).some((c) => TURNS.includes(c))) this.bump('turnedFirst');
     const heard = this.crossTalk(said);
 
     // Watch: every command step is one flash.
@@ -213,8 +231,8 @@ export class CoordinatorStage implements BattleStage {
       if (!target.alive) continue;
       let take: boolean;
       const me = b.coords.find((c) => c.id === PLAYER_ID);
-      if (a.s === this.partner && me?.alive) {
-        take = await this.offer();
+      if (this.mine.includes(a.s) && me?.alive) {
+        take = await this.offer(a.s);
       } else take = takesBlow(b, a.s);
       this.handle(strike(b, a, take));
       await this.flash();
@@ -228,6 +246,7 @@ export class CoordinatorStage implements BattleStage {
     this.ctx.memory.partnerScared = this.hitThisTurn.has(this.partner) && unit(b, this.partner).alive;
     this.scared = new Set([...this.hitThisTurn].filter((id) => id !== this.partner));
     this.hitThisTurn.clear();
+    for (const id of this.mine) if (!unit(b, id).alive) this.panel.setGone(id);
     this.debugText();
     this.ctx.commit();
     await this.sleep(TUNING.stepSeconds * 0.6);
@@ -241,15 +260,15 @@ export class CoordinatorStage implements BattleStage {
   }
 
   /** The partner (and every NPC striker) carries out the i-th command as he heard it, in his own way. */
-  private step(i: number, heard: readonly Cmd[]): Ev[] {
+  private step(i: number, heard: ReadonlyMap<string, readonly Cmd[]>): Ev[] {
     const b = this.b;
     const ev: Ev[] = [];
     for (const u of b.units) {
       if (!u.alive) continue;
-      const mine = u.id === this.partner;
-      const cmd = mine ? heard[i] : this.npc.get(u.id)?.cmds[i];
+      const mine = this.mine.includes(u.id);
+      const cmd = mine ? heard.get(u.id)?.[i] : this.npc.get(u.id)?.cmds[i];
       if (!cmd && u.actions <= 0) continue;
-      const mood: Mood = mine ? { scared: this.ctx.memory.partnerScared, trust: this.ctx.memory.trust } : { scared: this.scared.has(u.id), trust: 1 };
+      const mood: Mood = u.id === this.partner ? { scared: this.ctx.memory.partnerScared, trust: this.ctx.memory.trust } : { scared: this.scared.has(u.id), trust: 1 };
       const done = perform(b, u.id, cmd ?? 'stay', i, SOLDIERS[u.id]?.quirks ?? [], mood);
       ev.push(...act(b, u.id, done));
     }
@@ -261,11 +280,11 @@ export class CoordinatorStage implements BattleStage {
     const out = new Map<string, NpcTurn>();
     const b = this.b;
     for (const u of b.units) {
-      if (!u.alive || u.id === this.partner) continue;
+      if (!u.alive || this.mine.includes(u.id)) continue;
       const c = u.coord ? b.coords.find((it) => it.id === u.coord && it.alive) : undefined;
       const p = plan(b, u.id, c ? {} : { blind: TUNING.smellRange });
-      const words = c ? (SOLDIERS[c.id]?.words ?? {}) : null;
-      out.set(u.id, { id: u.id, coord: c?.id ?? null, cmds: p.cmds, line: words ? say(p.cmds, words, { scared: this.scared.has(u.id), to: nameOf(u.id) }) : null, intent: p.intent, did: [] });
+      const words = c ? wordsOf(c.id, this.ctx.names) : null;
+      out.set(u.id, { id: u.id, coord: c?.id ?? null, cmds: p.cmds, line: words ? say(p.cmds, words, { scared: this.scared.has(u.id), to: this.name(u.id) }) : null, intent: p.intent, did: [] });
     }
     return out;
   }
@@ -279,7 +298,7 @@ export class CoordinatorStage implements BattleStage {
       if (!coord) continue;
       const at = delay;
       const line = t.line;
-      const who = nameOf(coord.id);
+      const who = this.name(coord.id);
       const col = coord.x;
       void this.sleep(at).then(() => {
         if (this.destroyed || (this.phase !== 'orders' && this.phase !== 'exec')) return;
@@ -291,52 +310,60 @@ export class CoordinatorStage implements BattleStage {
   }
 
   /**
-   * The one random thing (concept «Напарник и другие пары»): with several voices at once, the partner may hear
-   * the nearest neighbour's command instead of the player's. Explained after the turn in one line.
+   * The one random thing (concept «Напарник и другие пары»): with several voices at once, a striker of the
+   * player's may hear the nearest neighbour's command instead of the player's. Explained after the turn in one line.
    */
-  private crossTalk(said: readonly Cmd[]): Cmd[] {
+  private crossTalk(said: readonly Order[]): Map<string, Cmd[]> {
     const b = this.b;
-    const heard = [...said];
+    const heard = new Map<string, Cmd[]>();
     const speaking = [...this.npc.values()].filter((t) => t.line && t.coord);
     const voices = 1 + speaking.length;
-    const me = unit(b, this.partner);
-    const near = speaking
-      .map((t) => ({ t, x: b.coords.find((c) => c.id === t.coord)?.x ?? 0 }))
-      .sort((p, q) => Math.abs(p.x - me.x) - Math.abs(q.x - me.x));
-    const from = new Set<string>();
-    said.forEach((cmd, i) => {
-      const other = near.find((n) => n.t.cmds[i] !== undefined);
-      const theirs = other?.t.cmds[i];
-      if (!other || !theirs || theirs === cmd) return;
-      const alike = MOVES.includes(cmd) === MOVES.includes(theirs);
-      if (mishears(b, voices, alike, TUNING.crossTalk)) {
-        heard[i] = theirs;
-        from.add(other.t.coord!);
-      }
-    });
-    if (from.size) {
-      this.bump('misheard');
-      const n = nameOf(this.partner);
+    const notes: string[] = [];
+    for (const id of this.mine) {
+      const cmds = said.filter((o) => o.to === id).map((o) => o.cmd);
+      heard.set(id, cmds);
+      const me = unit(b, id);
+      if (!me.alive) continue;
+      const near = speaking
+        .map((t) => ({ t, x: b.coords.find((c) => c.id === t.coord)?.x ?? 0 }))
+        .sort((p, q) => Math.abs(p.x - me.x) - Math.abs(q.x - me.x));
+      const from = new Set<string>();
+      cmds.forEach((cmd, i) => {
+        const other = near.find((n) => n.t.cmds[i] !== undefined);
+        const theirs = other?.t.cmds[i];
+        if (!other || !theirs || theirs === cmd) return;
+        const alike = MOVES.includes(cmd) === MOVES.includes(theirs);
+        if (mishears(b, voices, alike, TUNING.crossTalk)) {
+          cmds[i] = theirs;
+          from.add(other.t.coord!);
+        }
+      });
+      if (!from.size) continue;
+      const n = this.name(id);
       const verb = n.endsWith('а') ? 'расслышала' : 'расслышал';
-      this.panel.note(`${n} ${verb} ${[...from].map((id) => acc(nameOf(id))).join(' и ')}.`, 7000);
+      notes.push(`${n} ${verb} ${[...from].map((c) => cases(this.name(c)).acc).join(' и ')}.`);
+    }
+    if (notes.length) {
+      this.bump('misheard');
+      this.panel.note(notes.join(' '), 7000);
     }
     return heard;
   }
 
-  /** «Принять удар»: the blow is coming for the partner; the player takes it or lets it land. */
-  private async offer(): Promise<boolean> {
+  /** «Принять удар»: the blow is coming for a striker of the player's; the player takes it or lets it land. */
+  private async offer(id: string): Promise<boolean> {
     this.bump('offered');
     this.choice = null;
     await this.flash();
     this.teach('accept');
-    this.panel.prompt(true);
+    this.panel.prompt(true, cases(this.name(id)).acc);
     await this.wait('prompt', TUNING.acceptSeconds);
     this.panel.prompt(false);
     this.setPhase('exec');
     const take = this.choice === true;
     if (take) {
       this.bump('accepted');
-      this.ctx.memory.trust = Math.min(3, this.ctx.memory.trust + 1);
+      if (id === this.partner) this.ctx.memory.trust = Math.min(3, this.ctx.memory.trust + 1);
     }
     return take;
   }
@@ -350,7 +377,7 @@ export class CoordinatorStage implements BattleStage {
     let rustles = 0;
     for (const e of ev) {
       if ('s' in e && DID[e.t]) {
-        if (e.s === this.partner) this.partnerDid.push(DID[e.t]!);
+        if (this.mine.includes(e.s)) this.mineDid.get(e.s)?.push(DID[e.t]!);
         else this.npc.get(e.s)?.did.push(DID[e.t]!);
       }
       switch (e.t) {
@@ -366,6 +393,7 @@ export class CoordinatorStage implements BattleStage {
           break;
         }
         case 'wall':
+        case 'obstacle':
         case 'bump':
         case 'blocked': {
           const u = unit(b, e.s);
@@ -376,6 +404,12 @@ export class CoordinatorStage implements BattleStage {
           this.sound.crunch(heardAt(e.at[0], e.at[1]));
           this.crushed.push({ x: e.at[0], y: e.at[1], id: e.c, strong: e.strong });
           if (e.s === this.partner) this.bump('crushed');
+          else if (this.mine.includes(e.s)) this.bump(`${e.s}Kills`);
+          if (e.s === this.def.goal?.striker && this.mine.includes(e.s)) {
+            const u = unit(b, e.s);
+            const p = pt(u.x, u.y);
+            this.panel.bark(p.x, p.y - 26 * p.s, this.def.goal.cheer);
+          }
           break;
         case 'trap': {
           const at = heardAt(e.at[0], e.at[1]);
@@ -420,7 +454,7 @@ export class CoordinatorStage implements BattleStage {
           break;
         case 'coordDown':
           if (e.c === PLAYER_ID) this.drawTallies();
-          else this.panel.note(`${nameOf(e.c)} больше не отвечает из зоны.`);
+          else this.panel.note(`${this.name(e.c)} больше не отвечает из зоны.`);
           break;
         case 'fall': {
           const u = unit(b, e.s);
@@ -429,7 +463,8 @@ export class CoordinatorStage implements BattleStage {
           if (e.s === this.partner) this.trauma = Math.min(1, this.trauma + 0.6);
           // His coordinator calls after him.
           const c = u.coord ? b.coords.find((it) => it.id === u.coord && it.alive && it.id !== PLAYER_ID) : undefined;
-          if (c) this.speeches.push(this.panel.speech(zoneX(c.x), ZONE_Y - 52, nameOf(c.id), `${nameOf(u.id)}!..`, SOLDIERS[c.id]?.hand ?? 'serif'));
+          if (c) this.speeches.push(this.panel.speech(zoneX(c.x), ZONE_Y - 52, this.name(c.id), `${this.name(u.id)}!..`, SOLDIERS[c.id]?.hand ?? 'serif'));
+          else if (e.s !== this.partner && this.mine.includes(e.s)) this.panel.note(`${this.name(e.s)} не встаёт.`);
           break;
         }
         case 'retreat':
@@ -458,9 +493,11 @@ export class CoordinatorStage implements BattleStage {
       this.ctx.stage.app.renderer.render({ container: this.glasses.view, target: this.snapRT, clear: true });
       this.lastFlash = this.clock;
       this.sound.lamp({ x: 0, z: 0.6 });
-      const p = unit(this.b, this.partner);
-      const at = pt(p.x, p.y);
-      this.panel.moveTag(at.x, at.y + 26 * at.s, p.alive);
+      for (const id of this.mine) {
+        const p = unit(this.b, id);
+        const at = pt(p.x, p.y);
+        this.panel.moveTag(id, at.x, at.y + 26 * at.s, p.alive);
+      }
       const loose = this.b.secrets.filter((s) => !s.taken);
       const s = loose[this.b.turn % Math.max(1, loose.length)];
       if (s && this.phase === 'plan') this.sound.glint(heardAt(s.x, s.y));
@@ -597,6 +634,13 @@ export class CoordinatorStage implements BattleStage {
       return;
     }
     if (this.phase !== 'plan' && this.phase !== 'orders') return;
+    if (this.mine.length > 1 && (e.code === 'Tab' || TARGET_KEYS.includes(e.code))) {
+      e.preventDefault();
+      const living = this.mine.filter((id) => unit(this.b, id).alive);
+      const next = e.code === 'Tab' ? living[(living.indexOf(this.target) + (e.shiftKey ? living.length - 1 : 1)) % living.length] : this.mine[TARGET_KEYS.indexOf(e.code)];
+      if (next) this.aim(next);
+      return;
+    }
     const cmd = PAD.find(([code]) => code === e.code)?.[2];
     if (cmd) {
       e.preventDefault();
@@ -612,11 +656,14 @@ export class CoordinatorStage implements BattleStage {
 
   private push(c: Cmd): void {
     if (this.paused || (this.phase !== 'plan' && this.phase !== 'orders')) return;
-    if (this.queue.length >= this.slots) {
+    // Each striker can do only as much as he has actions (a snare costs one).
+    const own = this.queue.filter((o) => o.to === this.target).length;
+    const to = unit(this.b, this.target);
+    if (this.queue.length >= this.slots || !to.alive || own >= to.actions) {
       this.sound.uiTick();
       return;
     }
-    this.queue.push(c);
+    this.queue.push({ to: this.target, cmd: c });
     this.panel.setQueue(this.queue, this.slots);
     this.sound.uiTick();
     // Speaking ends the looking.
@@ -634,6 +681,13 @@ export class CoordinatorStage implements BattleStage {
     if (this.phase === 'plan' || this.phase === 'orders') this.endPhase('input');
   }
 
+  /** Whom the next commands are for (battle 3). */
+  private aim(id: string): void {
+    if (!this.mine.includes(id) || !unit(this.b, id).alive) return;
+    this.target = id;
+    this.panel.setTarget(id);
+  }
+
   private decide(take: boolean): void {
     if (this.paused || this.phase !== 'prompt') return;
     this.choice = take;
@@ -644,7 +698,8 @@ export class CoordinatorStage implements BattleStage {
 
   private teach(moment: 'look' | 'speak' | 'accept'): void {
     if (this.def.id !== 'training') return;
-    const n = nameOf(this.partner);
+    const n = this.name(this.partner);
+    const acc = (name: string) => cases(name).acc;
     const turn = this.b.turn;
     const text =
       moment === 'look' && turn === 1
@@ -685,9 +740,9 @@ export class CoordinatorStage implements BattleStage {
   private debugText(): void {
     if (!this.ctx.debug) return;
     const lines = [`ход ${this.b.turn} · доверие ${this.ctx.memory.trust} · ${this.ctx.memory.partnerScared ? 'напуган' : 'спокоен'}`];
-    lines.push(`ты → ${nameOf(this.partner)}: сделал ${this.partnerDid.join(', ') || '—'}`);
+    for (const id of this.mine) lines.push(`ты → ${this.name(id)}: сделал ${this.mineDid.get(id)?.join(', ') || '—'}`);
     for (const t of this.npc.values()) {
-      lines.push(`${t.coord ? nameOf(t.coord) : 'сам'} → ${nameOf(t.id)}\n  задумал: ${t.intent}\n  сказал: ${t.cmds.map((c) => CMD_LABEL[c]).join(', ') || '—'}\n  сделал: ${t.did.join(', ') || '—'}`);
+      lines.push(`${t.coord ? this.name(t.coord) : 'сам'} → ${this.name(t.id)}\n  задумал: ${t.intent}\n  сказал: ${t.cmds.map((c) => CMD_LABEL[c]).join(', ') || '—'}\n  сделал: ${t.did.join(', ') || '—'}`);
     }
     this.panel.debug.textContent = lines.join('\n');
   }
@@ -696,6 +751,11 @@ export class CoordinatorStage implements BattleStage {
 
   private bump(key: string, by = 1): void {
     bump(this.ctx.memory, key, by);
+  }
+
+  /** The name a soldier goes by in this run. */
+  private name(id: string): string {
+    return nameOf(id, this.ctx.names);
   }
 
   private clearSpeech(): void {

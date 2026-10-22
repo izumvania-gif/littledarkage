@@ -12,7 +12,8 @@ import { Graphics } from 'pixi.js';
 import { LINE, PLAYER } from './content/recruits.ts';
 import { SPEECH } from './content/speech.ts';
 import { makeBattle } from './core/battle.ts';
-import { loadSave, newRun, retireRun, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
+import { checkName } from './core/names.ts';
+import { loadSave, newRun, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
 import { loadSettings, saveSettings, type Settings } from './core/settings.ts';
 import { AudioEngine } from './engine/audio.ts';
 import { buildLineup, type LineupScene } from './render/lineup.ts';
@@ -126,7 +127,9 @@ async function prologue(plate: CaptionPlate, scene: LineupScene, audio: AudioEng
     r.setPose('speak');
     r.nudge(-10);
     if (who === PLAYER) {
-      player = await plate.askName(save.memory.names);
+      // The name given in the last finale's lineup starts this playthrough; otherwise the player gives one now.
+      const given = save.memory.nextName;
+      player = given && checkName(given.name, save.memory.names).ok ? given : await plate.askName(save.memory.names);
       await plate.callout(player.name);
     } else {
       await plate.callout(who);
@@ -137,7 +140,7 @@ async function prologue(plate: CaptionPlate, scene: LineupScene, audio: AudioEng
 
   general.setPose('speak');
   const run = newRun(player.name, player.gender);
-  const next: SaveFile = { ...save, run };
+  const next: SaveFile = { ...save, run, memory: { ...save.memory, nextName: null } };
   writeSave(store, next);
   await plate.register(next.memory.names, entryLine(run), true);
   general.setPose('rest');
@@ -293,8 +296,8 @@ async function main(): Promise<void> {
 
   glasses.view.visible = false;
   dark.visible = false;
+  // The runner writes the run into the register at the finale; the next playthrough starts at the lineup.
   await new Runner({ stage, ui, audio, settings, reduced, plate, store, debug }, save).play();
-  writeSave(store, retireRun(save));
   location.reload();
 }
 

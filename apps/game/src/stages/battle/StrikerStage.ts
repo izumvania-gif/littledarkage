@@ -6,22 +6,27 @@
  * battle remembers it, and trust moves with it.
  *
  * Alone (battle 3, after the partner falls) there is no voice at all: only the dark, the smell, the sound.
+ * In the barracks after the mutiny (the riot) it is so from the start: no lamp either — the stove's crackle is
+ * the one fixed sound — and the bunks are felt with the paws.
  */
 import { perform, plan, takesBlow } from '../../core/ai.ts';
 import { beginTurn, CMD_LABEL, creepPhase, endTurn, phases, relative, smell, stepPhase, strike, unit, type Attack, type Battle, type Cmd, type Ev, type Unit } from '../../core/battle.ts';
 import { captionsOn } from '../../core/settings.ts';
 import { say, said } from '../../core/voice.ts';
 import { TUNING } from '../../content/battles.ts';
-import { PLAYER_ID, SOLDIERS, soldier, type Signal } from '../../content/soldiers.ts';
+import { nameOf, PLAYER_ID, SOLDIERS, soldier, wordsOf, type Signal } from '../../content/soldiers.ts';
 import { BattleSound, where, type Spot } from '../../engine/spatial.ts';
 import { isTyping } from '../../ui/dom.ts';
 import { StrikerHud } from './striker/hud.ts';
 import { StrikerScene } from './striker/scene.ts';
+import { cases } from './cases.ts';
 import { bump, type BattleContext, type BattleStage, type StageExit } from './types.ts';
 
 /** The coordinators stand this far behind the near edge (rows run 0..8); the lamp hangs over the zone's middle. */
 const ZONE_Y = 9.6;
 const LAMP = { x: 4, y: 9.9 };
+/** In the barracks there is no lamp: the stove by the near wall crackles instead. */
+const STOVE = { x: 7, y: 9.2 };
 /** Heart rate for 3, 2 and 1 hits left. */
 const BPM: Record<number, number> = { 3: 62, 2: 88, 1: 124 };
 const SIGNAL_WORD: Record<Signal, string> = { whistle: 'свист', snap: 'щелчок пальцами', cough: 'покашливание', pipe: 'стук по трубе' };
@@ -46,6 +51,13 @@ const KEYMAP: Record<string, Cmd> = {
 
 type Phase = 'intro' | 'listen' | 'decide' | 'exec' | 'done';
 
+export interface StrikerOptions {
+  /** No voice behind the player: battle 3 after the partner fell, or the riot from the start. */
+  solo?: boolean;
+  /** What the dark says before the first turn alone. */
+  intro?: { title: string; sub: string };
+}
+
 interface Timer {
   at: number;
   done: () => void;
@@ -54,6 +66,9 @@ interface Timer {
 export class StrikerStage implements BattleStage {
   private readonly ctx: BattleContext;
   private readonly solo: boolean;
+  private readonly intro0: { title: string; sub: string } | null;
+  /** The barracks after the mutiny: no lamp, the stove for a beacon, the bunks underfoot. */
+  private readonly barracks: boolean;
   private readonly sound: BattleSound;
   private readonly scene: StrikerScene;
   private readonly hud: StrikerHud;
@@ -75,14 +90,17 @@ export class StrikerStage implements BattleStage {
   /** NPC strikers hit last turn: their quirks are on. */
   private npcScared = new Set<string>();
   private next = { lamp: 600, drip: 1800, scrape: 2500, beat: 400 };
+  private stoveCaptioned = false;
   private lampCaptioned = false;
   /** The player's last cell and facing, for placing sounds after a fall. */
   private me: Pick<Unit, 'x' | 'y' | 'dir'>;
 
-  constructor(ctx: BattleContext, opts: { solo?: boolean } = {}) {
+  constructor(ctx: BattleContext, opts: StrikerOptions = {}) {
     this.ctx = ctx;
     this.b = ctx.battle;
     this.solo = !!opts.solo;
+    this.intro0 = opts.intro ?? null;
+    this.barracks = ctx.def.place === 'barracks';
     this.sound = new BattleSound(ctx.audio);
     this.scene = new StrikerScene(ctx.def.t >= 0.6);
     ctx.stage.root.addChild(this.scene.view);
@@ -139,7 +157,10 @@ export class StrikerStage implements BattleStage {
     if (!b.over) {
       this.hud.setTurn(this.turnLabel(Math.max(1, b.turn + 1)));
       await this.sleep(900);
-      if (this.solo) await this.intro('Норкина больше нет.', 'Дальше — без голоса за спиной: только запах и звук.');
+      if (this.solo) {
+        const say = this.intro0 ?? { title: `${cases(this.nameOf(this.ctx.def.partner)).gen} больше нет.`, sub: 'Дальше — без голоса за спиной: только запах и звук.' };
+        await this.intro(say.title, say.sub);
+      }
       else if (b.turn === 0) await this.whisper();
       while (!b.over && unit(b, PLAYER_ID).alive && !this.dead) await this.turn();
     }
@@ -153,7 +174,7 @@ export class StrikerStage implements BattleStage {
 
   /** Before the first turn the partner explains his words once, in a whisper. */
   private async whisper(): Promise<void> {
-    const words = soldier(this.ctx.def.partner).words;
+    const words = wordsOf(this.ctx.def.partner, this.ctx.names);
     const text = words.step || words.step2 ? 'Слушай. «Чуток» — это шаг. «Раз-два» — два шага. Я сзади.' : 'Слушай. Я сзади. Иди на мой голос.';
     this.speak(this.ctx.def.partner, text, { whisper: true, hint: 'Enter — дальше' });
     await Promise.race([this.sleep(9000), new Promise<void>((r) => (this.skip = r))]);
@@ -163,7 +184,7 @@ export class StrikerStage implements BattleStage {
   }
 
   private async intro(title: string, sub: string): Promise<void> {
-    this.hud.say(title, `${sub} Enter — дальше.`);
+    this.hud.say(title, `${sub} Enter\u00a0— дальше.`);
     await Promise.race([this.sleep(5000), new Promise<void>((r) => (this.skip = r))]);
     this.skip = null;
     this.hud.say(null);
@@ -207,7 +228,7 @@ export class StrikerStage implements BattleStage {
       if (c && !this.solo) voices.push({ coord: c, striker: u.id, cmds: p.cmds });
     }
     const partner = this.solo ? null : this.voiceOf(me);
-    const words = soldier(this.ctx.def.partner).words;
+    const words = wordsOf(this.ctx.def.partner, this.ctx.names);
     const scared = memory.playerScared;
     let asked: Cmd[] = [];
     let line = '';
@@ -224,8 +245,7 @@ export class StrikerStage implements BattleStage {
     voices.forEach((v, i) => {
       this.after(i === 0 ? 1300 : 3300 + (i - 1) * 1100, () => {
         if (this.phase !== 'listen' && this.phase !== 'decide') return;
-        const s = soldier(v.coord);
-        this.speak(v.coord, say(v.cmds, s.words, { scared: this.npcScared.has(v.striker), to: SOLDIERS[v.striker]?.name }));
+        this.speak(v.coord, say(v.cmds, wordsOf(v.coord, this.ctx.names), { scared: this.npcScared.has(v.striker), to: this.nameOf(v.striker) }));
       });
     });
 
@@ -326,9 +346,9 @@ export class StrikerStage implements BattleStage {
     await this.sleep(600);
   }
 
-  /** The coordinator who speaks for u, if he is still in the zone. */
+  /** The coordinator who speaks for u, if he is still in the zone (never the player: he is out here). */
   private voiceOf(u: Unit): string | null {
-    if (!u.coord) return null;
+    if (!u.coord || (u.coord === PLAYER_ID && u.id !== PLAYER_ID)) return null;
     return this.b.coords.find((c) => c.id === u.coord && c.alive)?.id ?? null;
   }
 
@@ -394,13 +414,13 @@ export class StrikerStage implements BattleStage {
     const spot = this.coordSpot(id);
     if (opts.signal !== false) {
       this.sound.signal(s.signal, spot);
-      this.hud.caption(`${s.name}: ${SIGNAL_WORD[s.signal]} — ${where(spot)}`);
+      this.hud.caption(`${this.nameOf(id)}: ${SIGNAL_WORD[s.signal]} — ${where(spot)}`);
     }
-    this.hud.line(id, text, spot, { name: s.name, hand: s.hand, partner: opts.partner, whisper: opts.whisper, hint: opts.hint });
+    this.hud.line(id, text, spot, { name: this.nameOf(id), hand: s.hand, partner: opts.partner, whisper: opts.whisper, hint: opts.hint });
   }
 
   private nameOf(id: string): string {
-    return id === PLAYER_ID ? 'ты' : (SOLDIERS[id]?.name ?? id);
+    return id === PLAYER_ID ? 'ты' : nameOf(id, this.ctx.names);
   }
 
   private present(evs: readonly Ev[], hurt?: Set<string>): void {
@@ -428,7 +448,15 @@ export class StrikerStage implements BattleStage {
         case 'wall':
           if (e.s === PLAYER_ID) {
             this.sound.thud({ x: 0, z: 0.5 });
-            this.hud.caption('лапа упёрлась в стену туннеля');
+            this.hud.caption(this.barracks ? 'лапа упёрлась в стену казармы' : 'лапа упёрлась в стену туннеля');
+          }
+          break;
+        case 'obstacle':
+          if (e.s === PLAYER_ID) {
+            this.sound.thud({ x: 0, z: 0.5 });
+            // Boards creak under the paw.
+            this.sound.noise({ dur: 0.22, filter: 'bandpass', freq: 520, to: 380, q: 6, gain: 0.16, spot: { x: 0, z: 0.6 } });
+            this.hud.caption('лапа упёрлась в нары');
           }
           break;
         case 'bump':
@@ -503,7 +531,7 @@ export class StrikerStage implements BattleStage {
         case 'coordHit': {
           const spot = this.coordSpot(e.c);
           this.sound.cry(spot, 0.92);
-          this.hud.caption(`вскрик ${e.c === this.ctx.def.partner ? 'Норкина' : 'в зоне'} — ${where(spot)}`);
+          this.hud.caption(`вскрик ${e.c === this.ctx.def.partner ? cases(this.nameOf(e.c)).gen : 'в зоне'} — ${where(spot)}`);
           break;
         }
         case 'coordDown':
@@ -552,11 +580,14 @@ export class StrikerStage implements BattleStage {
     const t = this.time;
     if (t >= this.next.lamp) {
       this.next.lamp = t + TUNING.flashEvery * 1000;
-      const spot = this.rel(LAMP.x, LAMP.y);
-      this.sound.lamp(spot);
-      if (!this.lampCaptioned) {
-        this.lampCaptioned = true;
-        this.hud.caption(`щелчок лампы — ${where(spot)}: там зона`);
+      if (this.barracks) this.stove();
+      else {
+        const spot = this.rel(LAMP.x, LAMP.y);
+        this.sound.lamp(spot);
+        if (!this.lampCaptioned) {
+          this.lampCaptioned = true;
+          this.hud.caption(`щелчок лампы — ${where(spot)}: там зона`);
+        }
       }
     }
     if (t >= this.next.drip) {
@@ -583,6 +614,19 @@ export class StrikerStage implements BattleStage {
       this.sound.heart(hp === 1 ? 0.6 : hp === 2 ? 0.48 : 0.36);
       // Heard nothing (no sound) or reading captions: the heart shows on the frame edge.
       if (!this.ctx.audio.running || this.hud.captionsOn) this.scene.pulse();
+    }
+  }
+
+  /** The stove's crackle: two or three dry clicks from one place, the barracks' only fixed sound. */
+  private stove(): void {
+    const spot = this.rel(STOVE.x, STOVE.y);
+    const at = this.sound.now;
+    const n = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) this.sound.noise({ dur: 0.018, filter: 'highpass', freq: 1800 + Math.random() * 2200, gain: 0.22, spot, at: at + i * (0.05 + Math.random() * 0.09) });
+    this.sound.noise({ dur: 0.4, filter: 'lowpass', freq: 260, gain: 0.05, spot, attack: 0.1 });
+    if (!this.stoveCaptioned) {
+      this.stoveCaptioned = true;
+      this.hud.caption(`треск печки — ${where(spot)}`);
     }
   }
 

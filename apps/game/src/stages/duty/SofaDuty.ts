@@ -90,8 +90,9 @@ function paceOf(partner: string): { react: number; step: number } {
   return partner === 'norkin' ? { react: 0.65, step: 0.55 } : { react: 0.45, step: 0.5 };
 }
 
-export async function runSofa(ctx: DutyContext, partner: string): Promise<DutyResult> {
-  const duty = new Sofa(ctx, partner);
+/** `name` is what the partner goes by now (a face keeps its puppet after a new name: Сырков's is Пышкин's). */
+export async function runSofa(ctx: DutyContext, partner: string, name?: string): Promise<DutyResult> {
+  const duty = new Sofa(ctx, partner, name);
   try {
     return await duty.run();
   } finally {
@@ -125,9 +126,9 @@ class Sofa {
   private bounce = BOUNCE.length;
   private readonly onKey = (e: KeyboardEvent) => this.key(e);
 
-  constructor(ctx: DutyContext, partner: string) {
+  constructor(ctx: DutyContext, partner: string, name?: string) {
     this.ctx = ctx;
-    this.name = SOLDIERS[partner]?.name ?? partner;
+    this.name = name ?? SOLDIERS[partner]?.name ?? partner;
     this.model = new SofaModel(paceOf(partner), ctx.settings.noTimer);
     this.sound = new BattleSound(ctx.audio);
     this.scene = new DutyScene(ctx, HOLES);

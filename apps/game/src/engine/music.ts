@@ -1,7 +1,8 @@
 /**
  * The game's music (concept «Музыка»): an event, never a background. A track is rendered once with an
  * OfflineAudioContext (engine/music/render.ts), cached, and played into the music bus like a cassette: it ends
- * on its own, the tape clicks, and a looping track starts again after a pause. Under dialogue and letters it
+ * on its own, the tape clicks, and a looping track starts again after a pause (one with loop points, the
+ * mutiny's, goes round without a seam). Under dialogue and letters it
  * ducks by 12 dB; stopping fades it out on a bar line, or cuts it with the tape recorder's «стоп» click.
  */
 import { TRACKS, type TrackId } from '../content/tracks.ts';
@@ -162,6 +163,12 @@ export class Music {
     this.duckGain.gain.value = this.ducked ? 10 ** (DUCK_DB / 20) : 1;
     const src = ctx.createBufferSource();
     src.buffer = rendered.buffer;
+    // A track with loop points (the mutiny's) goes round without the cassette's click and gap.
+    if (loop && rendered.loop) {
+      src.loop = true;
+      src.loopStart = rendered.loop.start;
+      src.loopEnd = rendered.loop.end;
+    }
     const gain = ctx.createGain();
     src.connect(gain).connect(this.duckGain);
     const t0 = ctx.currentTime + 0.05;

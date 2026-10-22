@@ -23,6 +23,9 @@ function host(seed: number, fem: boolean) {
     flag: (f) => flags.has(f) || (f.startsWith('letter9_') ? rnd() < 0.33 : false),
     flag_set: (f) => void flags.add(f),
     hp: () => 1 + Math.floor(rnd() * 3),
+    who: (face) => ({ syrkov: 'Пышкин', norkin: 'Норкин' })[face] ?? face,
+    rank_of: () => Math.floor(rnd() * 3),
+    cycle: () => 1 + Math.floor(rnd() * 3),
   };
   return { h, rnd, flags };
 }
@@ -31,7 +34,7 @@ function host(seed: number, fem: boolean) {
 function knots(): string[] {
   const out: string[] = ['c1_after_sofa'];
   for (const sc of SCENES) {
-    if (sc.kind === 'talk' || sc.kind === 'roam') out.push(sc.id);
+    if (sc.kind === 'talk' || sc.kind === 'roam' || sc.kind === 'muster') out.push(sc.id);
     for (const h of sc.hotspots ?? []) out.push(`${sc.id}_${h.id}`);
   }
   return out;

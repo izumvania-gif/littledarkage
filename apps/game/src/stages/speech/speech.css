@@ -1,0 +1,193 @@
+/*
+ * The new general's speech: the sheet he is putting it together on (left), the slips on the desk (right), over
+ * the lineup. Cream and paper plates, ink text (4.5:1 or better), numbers as keys. Positions are reference
+ * pixels times --u (set from the stage's fit, as for the duties).
+ */
+
+.speech-sheet,
+.speech-slips {
+  pointer-events: auto;
+}
+
+.speech-sheet {
+  left: calc(24 * var(--u));
+  top: calc(16 * var(--u));
+  width: calc(440 * var(--u));
+  display: grid;
+  gap: calc(8 * var(--u));
+}
+
+.speech-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0;
+  font-family: var(--poster);
+  font-size: max(0.85rem, calc(18 * var(--u)));
+  letter-spacing: 0.04em;
+}
+
+.speech-timer {
+  font-family: var(--mono);
+  font-size: max(0.9rem, calc(19 * var(--u)));
+  letter-spacing: 0;
+}
+
+.speech-timer.low {
+  color: var(--error);
+  font-weight: 700;
+}
+
+.speech-lines {
+  margin: 0;
+  padding: 0 0 0 1.4em;
+  font-size: 0.94em;
+}
+
+.speech-lines li {
+  margin: 0 0 0.2em;
+  line-height: 1.28;
+}
+
+.speech-lines li.fresh {
+  animation: speech-in 0.25s steps(3) both;
+}
+
+.speech-lines li.empty {
+  color: var(--muted-cream);
+}
+
+.speech-lines li.silence {
+  font-style: italic;
+}
+
+.speech-actions {
+  display: flex;
+  gap: calc(6 * var(--u));
+}
+
+.speech-actions button,
+.speech-slip {
+  font: inherit;
+  cursor: pointer;
+}
+
+.speech-actions button {
+  padding: max(3px, calc(5 * var(--u))) max(6px, calc(9 * var(--u)));
+  white-space: nowrap;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.86em;
+}
+
+.speech-actions button.say {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.speech-actions button.say.ready {
+  animation: speech-ready 1s steps(2) infinite;
+}
+
+.speech-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.speech-actions kbd,
+.speech-slip kbd {
+  display: inline-block;
+  min-width: 1.1em;
+  margin-left: 0.35em;
+  padding: 0 0.25em;
+  border: 2px solid currentColor;
+  font-family: var(--mono);
+  font-size: 0.82em;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.speech-slips {
+  position: absolute;
+  left: calc(478 * var(--u));
+  top: calc(22 * var(--u));
+  width: calc(778 * var(--u));
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(10 * var(--u));
+}
+
+.speech-slip {
+  position: relative;
+  min-height: calc(84 * var(--u));
+  margin: 0;
+  padding: max(5px, calc(8 * var(--u))) max(8px, calc(10 * var(--u))) max(5px, calc(8 * var(--u))) max(30px, calc(38 * var(--u)));
+  border: 0;
+  border-bottom: max(2px, calc(3 * var(--u))) solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  font-family: var(--serif);
+  font-size: max(0.78rem, calc(16 * var(--u)));
+  line-height: 1.3;
+  box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 rgba(15, 14, 13, 0.55);
+}
+
+.speech-slip kbd {
+  position: absolute;
+  left: max(6px, calc(8 * var(--u)));
+  top: max(6px, calc(9 * var(--u)));
+  margin: 0;
+}
+
+.speech-slip:nth-child(3n + 1) {
+  transform: rotate(-0.6deg);
+}
+
+.speech-slip:nth-child(3n + 2) {
+  transform: rotate(0.5deg);
+}
+
+.speech-slip.silence {
+  font-style: italic;
+}
+
+.speech-slip.taken {
+  visibility: hidden;
+}
+
+.speech-slip:hover:not(:disabled) {
+  background: var(--cream);
+}
+
+.speech-slip:focus-visible,
+.speech-actions button:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@keyframes speech-in {
+  from {
+    transform: translateX(-0.6em);
+    opacity: 0.3;
+  }
+}
+
+@keyframes speech-ready {
+  50% {
+    background: var(--red-deep);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .speech-lines li,
+  .speech-actions button.say.ready {
+    animation: none;
+  }
+}

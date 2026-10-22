@@ -5,9 +5,10 @@
  * Bump SAVE_SCHEMA and add a migration in parseSave when the shape changes.
  */
 import { MAX_HP, type Battle } from './battle.ts';
+import { FACES, MAX_RANK, newRoster, PLAYER_FACE, type Roster } from './service.ts';
 import { isSceneId, type SceneId } from '../content/scenes.ts';
 
-export const SAVE_SCHEMA = 3;
+export const SAVE_SCHEMA = 4;
 export const SAVE_KEY = 'lda.save';
 export const BACKUP_KEY = 'lda.save.bak';
 
@@ -46,11 +47,31 @@ export interface RunState {
   /** The player's replies home, by letter number; they never arrive, and the finale reads them out. */
   replies: Record<string, string>;
   battle: BattleSave | null;
+  /** Who serves under which name and rank, by face (core/service.ts); the player is `player`. */
+  roster: Roster;
+  /** The general's draws (ranks, the new general) come from it, so a replayed muster announces the same. */
+  seed: number;
+  /** The new general named at the third muster: a face or `player`. */
+  general: string | null;
+  /** The player's earlier names in this run, after falling in battle and coming back under a new one. */
+  formerNames: string[];
+}
+
+/** A line of the register: a soldier's name and what the book says of them. */
+export interface RegisterRecord {
+  name: string;
+  note: string;
 }
 
 export interface Memory {
   /** Names of past soldiers, oldest first: crossed out in the register and refused at the lineup. */
   names: string[];
+  /** The register's lines for those names, as the finale wrote them. */
+  records: RegisterRecord[];
+  /** The name given in the finale's lineup: the next playthrough's roll call starts with it. */
+  nextName: { name: string; gender: Gender } | null;
+  /** Endings seen, oldest first. */
+  endings: string[];
 }
 
 export interface SaveFile {
@@ -64,15 +85,36 @@ export interface SaveFile {
 export type KeyValue = Pick<Storage, 'getItem' | 'setItem'>;
 
 export function freshSave(): SaveFile {
-  return { schema: SAVE_SCHEMA, generation: 0, run: null, memory: { names: [] } };
+  return { schema: SAVE_SCHEMA, generation: 0, run: null, memory: { names: [], records: [], nextName: null, endings: [] } };
 }
 
 /** A new soldier at the lineup. */
-export function newRun(name: string, gender: Gender): RunState {
-  return { name, gender, scene: 'workshop', hp: MAX_HP, trust: { norkin: 1 }, flags: [], replies: {}, battle: null };
+export function newRun(name: string, gender: Gender, seed = Math.floor(Math.random() * 1e9)): RunState {
+  return { name, gender, scene: 'workshop', hp: MAX_HP, trust: { norkin: 1 }, flags: [], replies: {}, battle: null, roster: newRoster(name), seed, general: null, formerNames: [] };
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+
+/** A roster as saved, else a fresh one (schemas 1–3 had none: everyone still under their first name). */
+function parseRoster(v: unknown, name: string): Roster {
+  const roster = newRoster(name);
+  if (!isObject(v)) return roster;
+  for (const face of [PLAYER_FACE, ...FACES]) {
+    const s = v[face];
+    if (!isObject(s) || typeof s.name !== 'string' || typeof s.rank !== 'number' || typeof s.since !== 'number' || typeof s.life !== 'number') continue;
+    roster[face] = { name: s.name, rank: Math.max(0, Math.min(MAX_RANK, s.rank)), since: s.since, life: s.life };
+  }
+  roster[PLAYER_FACE]!.name = name;
+  return roster;
+}
+
+/** A stable seed for runs saved before there was one. */
+function seedOf(name: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h ^ name.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
 
 function parseBattle(v: unknown): BattleSave | null {
   if (!isObject(v) || typeof v.id !== 'string' || !isObject(v.state) || !isObject(v.memory)) return null;
@@ -91,10 +133,33 @@ function parseRun(v: unknown): RunState | null {
   const hp = typeof v.hp === 'number' && v.hp >= 0 && v.hp <= MAX_HP ? v.hp : MAX_HP;
   const trust: Record<string, number> = { norkin: 1 };
   if (isObject(v.trust)) for (const [k, t] of Object.entries(v.trust)) if (typeof t === 'number') trust[k] = Math.max(0, Math.min(3, t));
-  const flags = Array.isArray(v.flags) ? v.flags.filter((f): f is string => typeof f === 'string') : [];
+  const flags = strings(v.flags);
   const replies: Record<string, string> = {};
   if (isObject(v.replies)) for (const [k, r] of Object.entries(v.replies)) if (typeof r === 'string') replies[k] = r;
-  return { name: v.name, gender: v.gender, scene, hp, trust, flags, replies, battle: parseBattle(v.battle) };
+  return {
+    name: v.name,
+    gender: v.gender,
+    scene,
+    hp,
+    trust,
+    flags,
+    replies,
+    battle: parseBattle(v.battle),
+    roster: parseRoster(v.roster, v.name),
+    seed: typeof v.seed === 'number' ? v.seed : seedOf(v.name),
+    general: typeof v.general === 'string' ? v.general : null,
+    formerNames: strings(v.formerNames),
+  };
+}
+
+function parseMemory(v: unknown): Memory {
+  const m = isObject(v) ? v : {};
+  const records = Array.isArray(m.records)
+    ? m.records.filter((r): r is RegisterRecord => isObject(r) && typeof r.name === 'string' && typeof r.note === 'string').map((r) => ({ name: r.name, note: r.note }))
+    : [];
+  const n = isObject(m.nextName) ? m.nextName : {};
+  const next = typeof n.name === 'string' && (n.gender === 'm' || n.gender === 'f') ? { name: n.name, gender: n.gender as Gender } : null;
+  return { names: strings(m.names), records, nextName: next, endings: strings(m.endings) };
 }
 
 export function parseSave(raw: string | null): SaveFile | null {
@@ -105,11 +170,10 @@ export function parseSave(raw: string | null): SaveFile | null {
   } catch {
     return null;
   }
-  const s = data as { schema?: unknown; generation?: unknown; run?: unknown; memory?: { names?: unknown } };
-  // Older schemas had runs without hits, trust, battles or scenes; parseRun fills them in.
+  const s = data as { schema?: unknown; generation?: unknown; run?: unknown; memory?: unknown };
+  // Older schemas had runs without hits, trust, battles, scenes or the roster; parseRun fills them in.
   if (!s || typeof s.schema !== 'number' || s.schema < 1 || s.schema > SAVE_SCHEMA || typeof s.generation !== 'number') return null;
-  const names = Array.isArray(s.memory?.names) ? s.memory.names.filter((n): n is string => typeof n === 'string') : [];
-  return { schema: SAVE_SCHEMA, generation: s.generation, run: parseRun(s.run), memory: { names } };
+  return { schema: SAVE_SCHEMA, generation: s.generation, run: parseRun(s.run), memory: parseMemory(s.memory) };
 }
 
 /** The main key, else the backup, else a fresh save. Storage may be missing or throw (private mode). */
@@ -136,9 +200,20 @@ export function writeSave(store: KeyValue | null, save: SaveFile): boolean {
   }
 }
 
-/** Ends the current run: its soldier goes into the register as a crossed-out name. */
-export function retireRun(save: SaveFile): SaveFile {
+/**
+ * Ends the current run: its soldier, under every name they went by, goes into the register crossed out, with the
+ * finale's notes when there are any. `next` is the name given in the finale's lineup, for the next roll call.
+ */
+export function retireRun(save: SaveFile, opts: { records?: readonly RegisterRecord[]; ending?: string; next?: Memory['nextName'] } = {}): SaveFile {
   const names = [...save.memory.names];
-  if (save.run && !names.includes(save.run.name)) names.push(save.run.name);
-  return { ...save, run: null, memory: { ...save.memory, names } };
+  const records = [...save.memory.records];
+  const run = save.run;
+  const theirs = run ? [...run.formerNames, run.name] : [];
+  for (const name of theirs) {
+    if (names.includes(name)) continue;
+    names.push(name);
+    records.push(opts.records?.find((r) => r.name === name) ?? { name, note: '' });
+  }
+  const endings = opts.ending ? [...save.memory.endings, opts.ending] : save.memory.endings;
+  return { ...save, run: null, memory: { names, records, nextName: opts.next ?? null, endings } };
 }

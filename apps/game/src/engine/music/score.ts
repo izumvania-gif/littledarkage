@@ -7,7 +7,7 @@ import { seededRng } from '../../core/rng.ts';
 import { DRUMS, PICKS, STRUMS, type BassId, type DrumHit, type DrumId, type PickId, type StrumId } from './patterns.ts';
 import { atOrAbove, chord, midi, scale, type Chord } from './theory.ts';
 
-export type TrackId = 'concert' | 'disco' | 'tape';
+export type TrackId = 'concert' | 'disco' | 'tape' | 'concert2' | 'concert3' | 'riot';
 
 export type Part = 'acoustic' | 'electric' | 'bass' | 'drums' | 'harmonica' | 'synthLead' | 'synthBass' | 'pad';
 
@@ -22,8 +22,8 @@ export interface Section {
   /** One entry per bar; two chords in a bar are written «F G». */
   chords: readonly string[];
   acoustic?: StrumId | PickId;
-  /** Palm-muted power chords on the overdriven electric, in eighths. */
-  power?: boolean;
+  /** Power chords on the overdriven electric, in eighths: palm-muted, or 'open' and ringing. */
+  power?: boolean | 'open';
   bass?: BassId;
   drums?: DrumId;
   /** A drum fill in the section's last bar. */
@@ -45,8 +45,8 @@ export interface TrackDef {
   meter: readonly [number, number];
   key: string;
   seed: number;
-  /** The band tunes up before the count-in (concept: «Номер группы начинается с настройки инструментов»). */
-  tuning?: boolean;
+  /** The band tunes up before the count-in (concept: «Номер группы начинается с настройки инструментов»); 'guitar' when only the guitarist is left. */
+  tuning?: boolean | 'guitar';
   /** One bar of drumsticks before the first bar. */
   countIn?: boolean;
   /** Silence (tape hiss only) before the first sound, seconds. */
@@ -64,6 +64,19 @@ export interface TrackDef {
   mix: Readonly<Partial<Record<Part, number>>>;
   /** What plays the bass lines: the bass guitar, or the disco's synth bass. */
   bassVoice?: 'bass' | 'synthBass';
+  /** Overdrive of the electric, 3.2 by default. */
+  drive?: number;
+  /** Shuffle: off-beat eighths come late, 0 straight to 1 a full triplet feel (4/4 only). */
+  swing?: number;
+  /** The drummer drags: seconds behind the beat by the end of each section (a third of it at its start); a new section catches up. */
+  drag?: number;
+  /** A tired band, 0..1: a note now and then starts a semitone off and is bent into place, rarely one stays wrong; the strummer is late to change chords and skips an up-stroke. */
+  slips?: number;
+  /**
+   * Sections [from, to) loop without a seam (the mutiny's tape plays for minutes): the score carries the loop's
+   * start and end, and the sections after `to` are the ending for a play without a loop.
+   */
+  loop?: { from: number; to: number };
 }
 
 export interface Note {
@@ -108,6 +121,8 @@ export interface Score {
   duration: number;
   sections: { name: string; t: number; bars: number }[];
   events: ScoreEvent[];
+  /** Where a looping track goes back to and from, seconds; whole bars, so the bar grid holds across the jump. */
+  loop?: { start: number; end: number };
 }
 
 /** Where each melodic part may play (MIDI), and the guitar's whole range. */
@@ -140,6 +155,12 @@ export function parsePhrase(src: string): PhraseNote[] {
       return { pitch: p === 'r' ? null : midi(p), dur };
     });
 }
+
+/**
+ * The loop's body is played on past its end for this many bars, copied note for note from its first bars, and the
+ * loop is shifted by as much: so the notes ringing across the jump back are the body's own end, not the intro's.
+ */
+export const LOOP_OVERHANG_BARS = 2;
 
 export const phraseBeats = (notes: readonly PhraseNote[]): number => notes.reduce((s, n) => s + n.dur, 0);
 
@@ -205,7 +226,7 @@ export function buildScore(def: TrackDef): Score {
   const jitter = (ms: number) => (rnd() - 0.5) * 2 * ms * 0.001;
 
   let t = def.lead;
-  if (def.tuning) t = tuning(t, note, hit);
+  if (def.tuning) t = tuning(t, note, hit, def.tuning === 'guitar');
   if (def.countIn) {
     for (let i = 0; i < barBeats; i += unit === 8 ? 3 : 1) hit(t + i * beat, 'sticks', i === 0 ? 0.9 : 0.75);
     t += bar;
@@ -213,17 +234,28 @@ export function buildScore(def: TrackDef): Score {
   const start = t;
   const sections: Score['sections'] = [];
   const seen = new Map<string, number>();
+  let loop: Score['loop'];
+  let bodyStart = 0;
+  let bodyFirst = 0;
 
   def.sections.forEach((sec, si) => {
+    if (def.loop && si === def.loop.from) {
+      bodyStart = t;
+      bodyFirst = events.length;
+    }
     const s0 = t;
     const level = sec.level ?? 1;
     const bars = sec.chords.map(barChords);
+    const span = bars.length * bar;
+    const dragAt = (at: number) => (def.drag ? def.drag * (1 / 3 + ((2 / 3) * (at - s0)) / span) : 0);
+    // At the loop's end the music goes on with the loop's first section.
+    const following = def.loop && si === def.loop.to - 1 ? def.sections[def.loop.from] : def.sections[si + 1];
     const chordAt = (b: number): Chord => {
       const cs = bars[Math.min(bars.length - 1, Math.floor(b / barBeats))]!;
       return cs[Math.min(cs.length - 1, Math.floor(((b % barBeats) / barBeats) * cs.length))]!;
     };
     const nextRoot = (barIndex: number): number => {
-      const next = bars[barIndex + 1]?.[0] ?? def.sections[si + 1]?.chords[0]?.split(/\s+/)[0];
+      const next = bars[barIndex + 1]?.[0] ?? following?.chords[0]?.split(/\s+/)[0];
       return typeof next === 'string' ? chord(next).root : (next?.root ?? chordAt(0).root);
     };
 
@@ -236,9 +268,14 @@ export function buildScore(def: TrackDef): Score {
       if (sec.acoustic && sec.acoustic in STRUMS) {
         const strokes = STRUMS[sec.acoustic as StrumId];
         const step = bar / strokes.length;
+        // A tired hand is late to the new chord: the first beat still rings the old one.
+        const was = bi > 0 ? bars[bi - 1]!.at(-1)! : null;
+        const late = def.slips && was && was.symbol !== cs[0]!.symbol && rnd() < 0.3 * def.slips ? was : null;
         strokes.forEach((stroke, k) => {
           if (stroke === '-') return;
-          const c = chordAtBeat((k * barBeats) / strokes.length);
+          if (def.slips && stroke === 'U' && rnd() < 0.08 * def.slips) return;
+          const pos = (k * barBeats) / strokes.length;
+          const c = late && pos < 1 ? late : chordAtBeat(pos);
           strum(tb + k * step + jitter(4), stroke, c, level, note, rnd);
         });
       } else if (sec.acoustic && sec.acoustic in PICKS) {
@@ -253,15 +290,16 @@ export function buildScore(def: TrackDef): Score {
         });
       }
 
-      // Electric: palm-muted power chords on every eighth.
+      // Electric: power chords on every eighth, palm-muted or ringing.
       if (sec.power) {
+        const open = sec.power === 'open';
         for (let k = 0; k < 8; k++) {
           const c = chordAtBeat((k * barBeats) / 8);
           const low = c.root >= 4 && c.root <= 7;
           const root = atOrAbove(c.root, low ? 40 : 45);
           const strings = low ? [0, 1, 2] : [1, 2, 3];
           [root, root + 7, root + 12].forEach((m, j) =>
-            note({ t: tb + k * (bar / 8) + j * 0.004 + jitter(3), part: 'electric', midi: m, dur: 0.12, vel: (k % 2 === 0 ? 0.8 : 0.6) * level, string: strings[j]!, mute: true }),
+            note({ t: tb + k * (bar / 8) + j * 0.004 + jitter(3), part: 'electric', midi: m, dur: open ? (bar / 8) * 0.95 : 0.12, vel: (k % 2 === 0 ? 0.8 : 0.6) * level, string: strings[j]!, ...(open ? {} : { mute: true }) }),
           );
         }
       }
@@ -277,11 +315,11 @@ export function buildScore(def: TrackDef): Score {
           for (let k = 0; k < grid.length; k++) {
             const ch = grid[k];
             if (ch === '.') continue;
-            hit(tb + k * step + (k === 0 ? 0 : jitter(3)), h, (ch === 'X' ? 1 : 0.7) * level * (0.92 + rnd() * 0.08));
+            hit(tb + k * step + (k === 0 ? 0 : jitter(3)) + dragAt(tb + k * step), h, (ch === 'X' ? 1 : 0.7) * level * (0.92 + rnd() * 0.08));
           }
         }
       }
-      if (sec.crash && bi === 0) hit(tb, 'crash', 0.85 * level);
+      if (sec.crash && bi === 0) hit(tb + dragAt(tb), 'crash', 0.85 * level);
 
       // Pad: the chord held, mid register.
       if (sec.pad) {
@@ -312,8 +350,18 @@ export function buildScore(def: TrackDef): Score {
             const strongBeat = (phraseStart + nb) % barBeats === 0;
             const long = n.dur >= barBeats / 2;
             const ev: Omit<Note, 'kind'> = { t: at + jitter(5), part: line.part, midi: n.pitch, dur: n.dur * beat * (line.part === 'harmonica' ? 0.97 : 0.92), vel: (strongBeat ? 0.85 : 0.72) * level };
+            if (def.slips && !strongBeat) {
+              const [lo, hi] = RANGES[line.part];
+              const wrong = n.pitch + (rnd() < 0.5 ? 1 : -1);
+              if (rnd() < 0.025 * def.slips && wrong >= lo && wrong <= hi) ev.midi = wrong;
+              else if (rnd() < 0.08 * def.slips) {
+                ev.cents = rnd() < 0.5 ? -100 : 100;
+                ev.centsTo = 0;
+                ev.bendTime = 0.12;
+              }
+            }
             if (line.part === 'synthLead' && prev !== null && Math.abs(prev - n.pitch) <= 7) ev.glideFrom = prev;
-            if ((line.part === 'harmonica' || line.part === 'electric') && long && rnd() < 0.45) {
+            if ((line.part === 'harmonica' || line.part === 'electric') && long && ev.cents === undefined && rnd() < 0.45) {
               ev.cents = -45;
               ev.centsTo = 0;
               ev.bendTime = Math.min(0.18, n.dur * beat * 0.3);
@@ -329,10 +377,31 @@ export function buildScore(def: TrackDef): Score {
 
     sections.push({ name: sec.name, t: s0, bars: bars.length });
     t = s0 + bars.length * bar;
+
+    if (def.loop && si === def.loop.to - 1) {
+      // The body's first bars once more after its end, then the ending a moment after the loop's end.
+      const len = t - bodyStart;
+      const until = bodyStart + LOOP_OVERHANG_BARS * bar - 0.02;
+      const again = events.slice(bodyFirst).filter((e) => e.t < until);
+      for (const e of again) events.push({ ...e, t: e.t + len });
+      loop = { start: bodyStart + LOOP_OVERHANG_BARS * bar, end: t + LOOP_OVERHANG_BARS * bar };
+      t = loop.end + 0.02;
+    }
   });
 
+  if (def.swing && unit === 4) for (const ev of events) ev.t = swung(ev.t, start, beat, def.swing);
   events.sort((a, b) => a.t - b.t);
-  return { id: def.id, beat, bar, start, duration: t + def.tail, sections, events };
+  return { id: def.id, beat, bar, start, duration: t + def.tail, sections, events, ...(loop ? { loop } : {}) };
+}
+
+/** A shuffle: within each beat the off-beat eighth moves from half the beat toward two thirds of it. */
+function swung(t: number, start: number, beat: number, amount: number): number {
+  if (t < start) return t;
+  const b = (t - start) / beat;
+  const i = Math.floor(b);
+  const p = b - i;
+  const mid = 0.5 + amount / 6;
+  return start + (i + (p < 0.5 ? p * 2 * mid : mid + (p - 0.5) * 2 * (1 - mid))) * beat;
 }
 
 /** The string a picked note lands on, or the nearest higher one that the chord plays. */
@@ -405,10 +474,17 @@ function bassBar(id: BassId, voice: 'bass' | 'synthBass', tb: number, bar: numbe
 }
 
 /** The band tuning up: a string slid into pitch, a reference string, the bass, the drums checked. Returns when the count-in may start. */
-function tuning(t: number, note: Emit, hit: (t: number, h: DrumHit, vel: number) => void): number {
+function tuning(t: number, note: Emit, hit: (t: number, h: DrumHit, vel: number) => void, guitarOnly = false): number {
   note({ t: t + 0.4, part: 'acoustic', midi: 45, dur: 2.2, vel: 0.55, string: 1, cents: -42, centsTo: -9, bendTime: 1.4 });
   note({ t: t + 1.0, part: 'acoustic', midi: 40, dur: 2.0, vel: 0.4, string: 0 });
   note({ t: t + 2.0, part: 'acoustic', midi: 45, dur: 1.6, vel: 0.5, string: 1, cents: -9, centsTo: 0, bendTime: 0.6 });
+  if (guitarOnly) {
+    // Nobody else to wait for: one soft chord and he begins.
+    chord('Am').voicing.forEach((m, s) => {
+      if (m >= 0) note({ t: t + 3.1 + s * 0.012, part: 'acoustic', midi: m, dur: 1.2, vel: 0.35, string: s });
+    });
+    return t + 4.6;
+  }
   note({ t: t + 2.9, part: 'electric', midi: 57, dur: 1.3, vel: 0.45, string: 3, cents: 28, centsTo: 0, bendTime: 0.9 });
   note({ t: t + 3.8, part: 'bass', midi: 28, dur: 1.1, vel: 0.7 });
   note({ t: t + 4.3, part: 'bass', midi: 33, dur: 0.9, vel: 0.6, cents: -22, centsTo: 0, bendTime: 0.5 });

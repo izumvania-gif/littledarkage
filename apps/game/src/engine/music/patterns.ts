@@ -23,7 +23,7 @@ export const PICKS: Record<PickId, readonly (number | 'B')[]> = {
 
 export type DrumHit = 'kick' | 'snare' | 'hatC' | 'hatO' | 'clap' | 'rim' | 'shaker' | 'crash' | 'sticks';
 
-export type DrumId = 'rock8' | 'rock8Light' | 'disco4' | 'discoBreak' | 'ballad' | 'fill44' | 'fill68';
+export type DrumId = 'rock8' | 'rock8Light' | 'disco4' | 'discoBreak' | 'ballad' | 'punk' | 'half' | 'fill44' | 'fill68';
 
 export const DRUMS: Record<DrumId, Partial<Record<DrumHit, string>>> = {
   rock8: { kick: 'X.......x.x.....', snare: '....X.......X...', hatC: 'X.x.x.x.X.x.x.x.' },
@@ -31,6 +31,10 @@ export const DRUMS: Record<DrumId, Partial<Record<DrumHit, string>>> = {
   disco4: { kick: 'X...X...X...X...', clap: '....X.......X...', hatC: 'x.x.x.x.x.x.x.x.', hatO: '..x...x...x...x.' },
   discoBreak: { kick: 'X...x...X...x...', hatC: '..x...x...x...x.' },
   ballad: { kick: 'X...........', rim: '......x.....', shaker: 'x.x.x.x.x.x.' },
+  // The yard punk beat: kick on every beat, snare on every «and», as fast as the hands go.
+  punk: { kick: 'X...x...X...x...', snare: '..x...X...x...X.', hatC: 'X.x.x.x.X.x.x.x.' },
+  // Half time: the same tempo, the snare only on three, heavy.
+  half: { kick: 'X.....x.X.....x.', snare: '........X.......', hatC: 'x.x.x.x.x.x.x.x.' },
   // The last bar before a new section: the beat for half a bar, then a snare roll into the next downbeat.
   fill44: { kick: 'X.......X.......', snare: '....X...x.x.xXXX', hatC: 'x.x.x.x.........' },
   fill68: { kick: 'X.....X.....', snare: '......x.x.xX', shaker: 'x.x.x.......' },

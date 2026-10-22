@@ -1,0 +1,26 @@
+/*
+ * The pen duty's plates, beside the duties' own (duty.css): the order as the general said it, the stopwatch,
+ * and, blindfolded, what the fingers feel. Positions are reference pixels times --u.
+ */
+
+.pen-order {
+  margin-top: 0.3em;
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+.pen-touch {
+  left: calc(28 * var(--u));
+  bottom: calc(22 * var(--u));
+  max-width: calc(620 * var(--u));
+  min-height: 1.35em;
+}
+
+.pen-touch:empty {
+  visibility: hidden;
+}
+
+.pen-touch .what {
+  font-weight: 700;
+  margin-right: 0.4em;
+}

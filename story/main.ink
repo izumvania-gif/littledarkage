@@ -12,8 +12,13 @@ EXTERNAL trust_add(id, by)
 EXTERNAL flag(f)
 EXTERNAL flag_set(f)
 EXTERNAL hp()
+EXTERNAL who(face)
+EXTERNAL rank_of(face)
+EXTERNAL cycle()
 
 INCLUDE prologue.ink
 INCLUDE cycle1.ink
+INCLUDE cycle2.ink
+INCLUDE cycle3.ink
 
 -> DONE

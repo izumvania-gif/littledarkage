@@ -144,6 +144,57 @@
   gap: max(4px, calc(8 * var(--u)));
 }
 
+/* Battle 3: whom the commands are for. The pressed tab is a filled plate, so it reads without colour. The
+   panel tightens to keep the pad and «Готово» in view with the extra row. */
+.cs[data-two='1'] .cs-panel {
+  gap: max(5px, calc(7 * var(--u)));
+}
+
+.cs[data-two='1'] .cs-sub {
+  min-height: 0;
+}
+
+.cs[data-two='1'] .cs-queue li {
+  padding-block: max(2px, calc(3 * var(--u)));
+  font-size: max(0.7rem, calc(14 * var(--u)));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cs-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: max(4px, calc(6 * var(--u)));
+}
+
+.cs-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: max(4px, calc(6 * var(--u))) max(5px, calc(8 * var(--u)));
+  border: 2px solid var(--cream);
+  background: transparent;
+  color: var(--cream);
+  font-size: max(0.75rem, calc(15 * var(--u)));
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cs-tabs button[aria-pressed='true'] {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.cs-tabs button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cs-tabs button[data-gone='1'] {
+  text-decoration: line-through;
+}
+
 .cs-panel .cs-row .cs-done {
   flex: 1;
   border-color: var(--red);

@@ -4,6 +4,7 @@
  *   their mistakes have a reason. They hold their own lane near the zone, let the creatures come and deal
  *   with the ones crawling at their own striker; the others are some other pair's business.
  * - A striker without a voice (his coordinator fell) goes by smell alone.
+ * - A striker with the sack (battle 2) is told to cover a weak creature right in front: it is wanted alive.
  * - Strikers carry out what they heard in their own way, and every quirk is switched on by something the
  *   player can see (he flinched, cried «Ай!», was hit). Coordinators' quirks change only the words (voice.ts).
  */
@@ -27,7 +28,9 @@ export interface PlanOptions {
 /** The row the pairs hold: two rows out from the zone, with one row of slack. */
 const HOLD_ROW = 6;
 
-const MOVE_COST: Partial<Record<Cmd, number>> = { step: 0.5, back: 0.5, left: 0.5, right: 0.5, jump: 0.5, step2: 1, turnL: 0.15, turnR: 0.15, about: 0.25 };
+const MOVE_COST: Partial<Record<Cmd, number>> = { step: 0.5, back: 0.5, left: 0.5, right: 0.5, jump: 0.5, step2: 1, turnL: 0.15, turnR: 0.15, about: 0.25, cover: 0.5 };
+/** What the sack adds to the orders. */
+const WITH_SACK: readonly Cmd[] = [...ORDERS, 'cover'];
 
 /** The best commands for striker id, from what his coordinator saw in the last flash. Ties go to fewer moves. */
 export function plan(b: Battle, id: string, opts: PlanOptions = {}): Plan {
@@ -40,13 +43,14 @@ export function plan(b: Battle, id: string, opts: PlanOptions = {}): Plan {
   const mine = new Set(seen.creatures.filter((c) => c.alive && (targetOf(seen, c)?.id === id || steps(c.x, c.y, u.x, u.y) <= 2)).map((c) => c.id));
   let best: Plan & { score: number } = { cmds: [], intent: 'стоять', score: -Infinity };
   const seq: Cmd[] = [];
+  const orders = u.bag ? WITH_SACK : ORDERS;
   const walk = (depth: number) => {
     if (depth === n) {
       const s = score(seen, id, seq, home, hold, mine);
       if (s.score > best.score) best = { cmds: [...seq], intent: s.intent, score: s.score };
       return;
     }
-    for (const c of ORDERS) {
+    for (const c of orders) {
       seq.push(c);
       walk(depth + 1);
       seq.pop();
@@ -85,15 +89,20 @@ function score(seen: Battle, id: string, cmds: readonly Cmd[], home: number, hol
   let total = 0;
   let crushed = 0;
   let secrets = 0;
-  for (const cmd of cmds) {
+  let caught = 0;
+  for (const [i, cmd] of cmds.entries()) {
     for (const e of act(b, id, cmd)) {
       if (e.t === 'crush') {
         total += (e.strong ? 16 : 12) * (mine.has(e.c) ? 1 : 0.2);
         crushed++;
+      } else if (e.t === 'capture') {
+        // The sooner the better: «Накрывай!» first, not after a «стой».
+        total += 15 - 0.1 * i;
+        caught++;
       } else if (e.t === 'secret') {
         total += 3;
         secrets++;
-      } else if (e.t === 'wall' || e.t === 'bump' || e.t === 'blocked') total -= 2;
+      } else if (e.t === 'wall' || e.t === 'bump' || e.t === 'blocked' || e.t === 'obstacle' || e.t === 'miss') total -= 2;
     }
     total -= MOVE_COST[cmd] ?? 0;
   }
@@ -108,7 +117,7 @@ function score(seen: Battle, id: string, cmds: readonly Cmd[], home: number, hol
   let nearest = Infinity;
   for (const c of b.creatures) if (c.alive && mine.has(c.id)) nearest = Math.min(nearest, steps(c.x, c.y, u.x, u.y));
   if (Number.isFinite(nearest)) total -= 0.25 * Math.max(0, nearest - 3);
-  const intent = crushed ? `раздавить ${crushed}` : secrets ? 'подобрать секрет' : hits ? 'не успеть увернуться' : ahead ? 'встретить тварь лицом' : 'ждать, пока подползут';
+  const intent = caught ? 'взять живой' : crushed ? `раздавить ${crushed}` : secrets ? 'подобрать секрет' : hits ? 'не успеть увернуться' : ahead ? 'встретить тварь лицом' : 'ждать, пока подползут';
   return { score: total, intent };
 }
 

@@ -66,8 +66,11 @@ test('a schema 2 save that passed the workshop resumes after it', () => {
 test('a schema 1 save migrates: the soldier keeps the name and gets three hits', () => {
   const old = JSON.stringify({ schema: 1, generation: 4, run: { name: 'Петрова', gender: 'f', stage: 'registered' }, memory: { names: ['Сырков'] } });
   const s = parseSave(old);
-  assert.equal(s?.schema, 3);
-  assert.deepEqual(s?.run, { name: 'Петрова', gender: 'f', scene: 'workshop', hp: 3, trust: { norkin: 1 }, flags: [], replies: {}, battle: null });
+  assert.equal(s?.schema, 4);
+  const { roster, seed, ...run } = s!.run!;
+  assert.deepEqual(run, { name: 'Петрова', gender: 'f', scene: 'workshop', hp: 3, trust: { norkin: 1 }, flags: [], replies: {}, battle: null, general: null, formerNames: [] });
+  assert.equal(roster.player?.name, 'Петрова');
+  assert.equal(typeof seed, 'number');
   assert.deepEqual(s?.memory.names, ['Сырков']);
 });
 
@@ -83,4 +86,23 @@ test('a battle in progress saves and loads; a broken one is dropped, the run sta
   broken.run.battle.state.units = 'no';
   assert.equal(parseSave(JSON.stringify(broken))?.run?.battle, null);
   assert.equal(parseSave(JSON.stringify(broken))?.run?.name, 'Иванов');
+});
+
+test('schema 3 runs get a roster under their first names and a stable seed', () => {
+  const old = JSON.stringify({ schema: 3, generation: 2, run: { name: 'Иванов', gender: 'm', scene: 'c1_free', hp: 3, trust: { norkin: 2 }, flags: ['syrkov_fell'], replies: {}, battle: null }, memory: { names: ['Сырков'] } });
+  const s = parseSave(old);
+  assert.equal(s?.run?.roster.syrkov?.name, 'Сырков');
+  assert.equal(s?.run?.roster.player?.name, 'Иванов');
+  assert.equal(s?.run?.seed, parseSave(old)?.run?.seed);
+  assert.deepEqual(s?.memory, { names: ['Сырков'], records: [], nextName: null, endings: [] });
+});
+
+test('retiring writes every name the soldier went by, with the finale\'s notes and the next name', () => {
+  const s = freshSave();
+  s.run = { ...newRun('Петрова', 'f', 1), formerNames: ['Иванова'] };
+  const out = retireRun(s, { records: [{ name: 'Петрова', note: 'пала в третьем бою' }], ending: 'lineup', next: { name: 'Сидорова', gender: 'f' } });
+  assert.deepEqual(out.memory.names, ['Иванова', 'Петрова']);
+  assert.deepEqual(out.memory.records, [{ name: 'Иванова', note: '' }, { name: 'Петрова', note: 'пала в третьем бою' }]);
+  assert.deepEqual(out.memory.nextName, { name: 'Сидорова', gender: 'f' });
+  assert.deepEqual(out.memory.endings, ['lineup']);
 });

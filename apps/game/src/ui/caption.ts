@@ -188,13 +188,13 @@ export class CaptionPlate {
     await wait(this.reducedMotion ? 500 : 750);
   }
 
-  /** The player's turn in the roll call. Former soldiers' names are taken. */
-  askName(taken: readonly string[]): Promise<{ name: string; gender: Gender }> {
+  /** The player's turn in the roll call. Former soldiers' names are taken; `gender` is checked at first. */
+  askName(taken: readonly string[], gender: Gender = 'm'): Promise<{ name: string; gender: Gender }> {
     return new Promise((resolve) => {
       const input = h('input', { attrs: { id: 'recruit-name', type: 'text', maxlength: String(MAX_NAME + 4), autocomplete: 'off', spellcheck: 'false', 'aria-describedby': 'name-error' } });
       const genders = (['m', 'f'] as const).map((g) => {
         const radio = h('input', { attrs: { type: 'radio', name: 'gender', value: g, id: `gender-${g}` } });
-        radio.checked = g === 'm';
+        radio.checked = g === gender;
         return h('label', { class: 'seg-option', attrs: { for: `gender-${g}` } }, radio, h('span', { text: g === 'm' ? 'рядовой' : 'рядовая' }));
       });
       const error = h('p', { class: 'error', attrs: { id: 'name-error', role: 'alert' } });

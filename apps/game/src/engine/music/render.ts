@@ -20,6 +20,8 @@ export interface Rendered {
   peakDb: number;
   rmsDb: number;
   sections: { name: string; t: number; rmsDb: number }[];
+  /** For a looping track: where to go back to and from, seconds on whole samples of the buffer (AudioBufferSourceNode.loopStart/loopEnd). */
+  loop?: { start: number; end: number };
 }
 
 const DB = (db: number) => 10 ** (db / 20);
@@ -27,6 +29,8 @@ const DB = (db: number) => 10 ** (db / 20);
 /** Target loudness after rendering, and the ceiling no peak may cross (the music leaves headroom under the effects). */
 const TARGET_RMS_DB = -19;
 const CEILING_DB = -3;
+/** The last moments before a loop's end are blended into those before its start, so the jump back has no click. */
+const SEAM_SECONDS = 0.04;
 
 type PluckKind = 'acoustic' | 'electric' | 'bass' | 'muted' | 'emuted';
 
@@ -70,15 +74,15 @@ function chain(x: Float32Array, fs: readonly ((v: number) => number)[]): void {
 }
 
 /** Each part's own colour, applied to its whole buffer. */
-function partChain(part: Part, sr: number): ((x: number) => number)[] {
+function partChain(part: Part, sr: number, drive = 3.2): ((x: number) => number)[] {
   switch (part) {
     case 'acoustic':
       // A wooden body: low resonances and a little air on top.
       return [biquad('highpass', 75, 0.7, sr), biquad('peaking', 105, 1.6, sr, 4), biquad('peaking', 230, 1.2, sr, 2), biquad('peaking', 3200, 0.8, sr, 2)];
     case 'electric': {
       // Light overdrive into a small cabinet.
-      const norm = Math.tanh(3.2);
-      return [(x) => Math.tanh(3.2 * x) / norm, biquad('highpass', 95, 0.7, sr), biquad('peaking', 1300, 1, sr, 3), biquad('lowpass', 4300, 0.9, sr)];
+      const norm = Math.tanh(drive);
+      return [(x) => Math.tanh(drive * x) / norm, biquad('highpass', 95, 0.7, sr), biquad('peaking', 1300, 1, sr, 3), biquad('lowpass', 4300, 0.9, sr)];
     }
     case 'bass':
       return [biquad('lowpass', 1100, 0.7, sr), biquad('peaking', 85, 1, sr, 2)];
@@ -222,7 +226,7 @@ export function synthesize(def: TrackDef, sr: number): Synth {
       else if (part === 'synthLead') addSynthLead(mono, sr, ev);
       else if (part === 'synthBass') addSynthBass(mono, sr, ev);
     }
-    chain(mono, partChain(part, sr));
+    chain(mono, partChain(part, sr, def.drive));
     mixMono(mono, level, pan, send);
   }
 
@@ -268,9 +272,30 @@ export async function renderTrack(def: TrackDef, opts: { wear?: number; sampleRa
   if (before.peak + gainDb > CEILING_DB) gainDb = CEILING_DB - before.peak;
   const k = DB(gainDb);
   for (const ch of chans) for (let i = 0; i < ch.length; i++) ch[i]! *= k;
+  let loop: Rendered['loop'];
+  if (score.loop) {
+    const from = Math.round(score.loop.start * sr);
+    const to = Math.round(score.loop.end * sr);
+    seam(chans, from, to, Math.round(SEAM_SECONDS * sr));
+    loop = { start: from / sr, end: to / sr };
+  }
   const after = levels(chans);
   const sections = score.sections.map((s) => ({ name: s.name, t: s.t, rmsDb: levels(chans, Math.floor(s.t * sr), Math.floor((s.t + s.bars * score.bar) * sr)).rms }));
-  return { buffer, score, renderSeconds: (performance.now() - started) / 1000, scheduleSeconds: (scheduled - started) / 1000, peakDb: after.peak, rmsDb: after.rms, sections };
+  return { buffer, score, renderSeconds: (performance.now() - started) / 1000, scheduleSeconds: (scheduled - started) / 1000, peakDb: after.peak, rmsDb: after.rms, sections, ...(loop ? { loop } : {}) };
+}
+
+/**
+ * Makes the jump from sample `to` back to sample `from` continuous: the n samples before `to` fade into the n
+ * before `from`, the same music a loop earlier, so the last sample played before the jump is the one that came
+ * before `from` the first time round.
+ */
+export function seam(chans: readonly Float32Array[], from: number, to: number, n: number): void {
+  for (const ch of chans) {
+    for (let i = 0; i < n; i++) {
+      const b = (i + 1) / n;
+      ch[to - n + i] = ch[to - n + i]! * (1 - b) + ch[from - n + i]! * b;
+    }
+  }
 }
 
 /** A soft clipping curve: tanh with the given drive. */

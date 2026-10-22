@@ -1,0 +1,291 @@
+/*
+ * The brawl's HUD over the picture (the general speaks on the caption plate below, not here): cream plates
+ * with dark ink at 4.5:1 or better, the poster's lettering for the kill words and the chronicle. Positions are
+ * reference pixels times --u (set from the stage's fit).
+ */
+
+#ui > .mutiny {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mt-plate {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: max(4px, calc(7 * var(--u))) max(8px, calc(12 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: max(0.8rem, calc(17 * var(--u)));
+  line-height: 1.35;
+  border-left: max(3px, calc(5 * var(--u))) solid var(--ink);
+}
+
+.mt-plate p {
+  margin: 0;
+}
+
+.mt-plate kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  border: 2px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 0.85em;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.mt-room {
+  left: 50%;
+  top: calc(5 * var(--u));
+  transform: translateX(-50%);
+  border-left: 0;
+  padding-top: max(2px, calc(3 * var(--u)));
+  padding-bottom: max(2px, calc(3 * var(--u)));
+  font-family: var(--poster);
+  font-size: max(0.75rem, calc(15 * var(--u)));
+  letter-spacing: 0.04em;
+}
+
+.mt-room .num {
+  color: var(--red-deep);
+}
+
+.mt-card {
+  left: calc(330 * var(--u));
+  top: calc(120 * var(--u));
+  width: calc(620 * var(--u));
+  pointer-events: auto;
+  border-left-color: var(--red);
+}
+
+.mt-card .title {
+  font-weight: 700;
+  margin-bottom: 0.3em;
+}
+
+.mt-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15em 0.9em;
+}
+
+.mt-card li {
+  display: contents;
+}
+
+.mt-card .go {
+  margin-top: 0.5em;
+  color: var(--muted-cream);
+}
+
+.mt-center {
+  left: 50%;
+  top: calc(56 * var(--u));
+  transform: translateX(-50%);
+  min-width: calc(360 * var(--u));
+  text-align: center;
+  pointer-events: auto;
+  border-left: 0;
+  border-top: max(3px, calc(5 * var(--u))) solid var(--red);
+}
+
+.mt-center .big {
+  font-family: var(--poster);
+  font-size: max(1.1rem, calc(26 * var(--u)));
+  color: var(--red-deep);
+  margin-bottom: 0.3em;
+}
+
+.mt-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5em;
+  margin-top: 0.6em;
+}
+
+.mt-plate button {
+  padding: max(4px, calc(8 * var(--u))) max(10px, calc(16 * var(--u)));
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font: 700 max(0.85rem, calc(17 * var(--u))) var(--serif);
+  cursor: pointer;
+}
+
+.mt-plate button.red {
+  background: var(--red-deep);
+}
+
+.mt-plate button:hover {
+  background: var(--red-deep);
+}
+
+.mt-plate button.red:hover {
+  background: var(--ink);
+}
+
+.mt-plate button:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
+.mt-plate button kbd {
+  border-color: var(--paper);
+  margin-left: 0.4em;
+}
+
+.mt-hint {
+  left: 50%;
+  bottom: calc(46 * var(--u));
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.mt-bark {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: max(2px, calc(4 * var(--u))) max(6px, calc(9 * var(--u)));
+  background: var(--paper);
+  color: var(--ink);
+  border: max(2px, calc(2 * var(--u))) solid var(--ink);
+  font-family: var(--serif);
+  font-size: max(0.75rem, calc(15 * var(--u)));
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.mt-bark b {
+  font-weight: 700;
+  margin-right: 0.35em;
+}
+
+.mt-bark.general {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.mt-bark.muted {
+  background: var(--cream);
+  color: var(--muted-cream);
+  font-style: italic;
+}
+
+/* «ДОЛОЙ!» for a fraction of a second on the frame's edge, never over the fighters. */
+.mt-kill {
+  position: absolute;
+  margin: 0;
+  padding: 0 0.25em;
+  background: var(--cream);
+  color: var(--red-deep);
+  border: max(2px, calc(3 * var(--u))) solid var(--ink);
+  font-family: var(--poster);
+  font-size: max(1.2rem, calc(34 * var(--u)));
+  line-height: 1.2;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  animation: mt-kill 0.55s steps(4, end) forwards;
+}
+
+@keyframes mt-kill {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-4deg) scale(1.25);
+  }
+  30% {
+    transform: translate(-50%, -50%) rotate(-4deg) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-4deg) scale(1);
+  }
+}
+
+.mutiny.calm .mt-kill {
+  animation: mt-kill-calm 0.55s linear forwards;
+}
+
+@keyframes mt-kill-calm {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.mt-pause {
+  left: 50%;
+  top: calc(130 * var(--u));
+  transform: translateX(-50%);
+  width: calc(520 * var(--u));
+  pointer-events: auto;
+  border-left: 0;
+  border-top: max(3px, calc(5 * var(--u))) solid var(--ink);
+}
+
+.mt-pause .big {
+  font-family: var(--poster);
+  font-size: max(1rem, calc(22 * var(--u)));
+  margin-bottom: 0.4em;
+}
+
+.mt-pause .note {
+  color: var(--muted-cream);
+  margin-top: 0.4em;
+}
+
+.mt-pause .mt-buttons {
+  justify-content: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mt-chron-title {
+  left: 50%;
+  top: calc(22 * var(--u));
+  transform: translateX(-50%);
+  font-family: var(--poster);
+  font-size: max(1rem, calc(24 * var(--u)));
+  border-left: 0;
+  background: none;
+  color: var(--ink);
+  padding: 0;
+}
+
+.mt-chron {
+  position: absolute;
+  margin: 0;
+  box-sizing: border-box;
+  padding: max(3px, calc(6 * var(--u)));
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--poster);
+  font-size: max(0.7rem, calc(15 * var(--u)));
+  line-height: 1.3;
+  text-align: center;
+}
+
+.mt-chron .n {
+  color: var(--red-deep);
+}
+
+.mt-next {
+  right: calc(30 * var(--u));
+  top: calc(480 * var(--u));
+  pointer-events: auto;
+  cursor: pointer;
+}

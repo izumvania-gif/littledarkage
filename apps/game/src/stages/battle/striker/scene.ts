@@ -117,6 +117,7 @@ export class StrikerScene {
       g.moveTo(x0, y0 + i * cs).lineTo(x0 + SIZE * cs, y0 + i * cs);
     }
     g.stroke({ width: 1, color: 0x1c1a18, alpha: 0.2 });
+    for (const [x, y] of b.obstacles ?? []) g.rect(x0 + x * cs + 1, y0 + y * cs + 1, cs - 2, cs - 2).fill({ color: 0x5a4a3a, alpha: 0.85 });
     for (const t of b.traps) g.rect(x0 + t.x * cs + 4, y0 + t.y * cs + 4, cs - 8, cs - 8).fill({ color: 0x8e1f17, alpha: t.sprung ? 1 : 0.35 });
     for (const s of b.secrets) {
       if (s.taken) continue;
