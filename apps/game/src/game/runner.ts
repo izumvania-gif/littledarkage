@@ -8,6 +8,9 @@
 import storyJson from '../../../../story/main.ink';
 import { makeBattle, MAX_HP, report } from '../core/battle.ts';
 import { recruitsAtTheWall, runRecords } from '../core/register.ts';
+import { fetchBoxLetters, postBoxLetter, reportArrival, reportRun, type RunReport, type SpeechName } from '../net/api.ts';
+import { replyAddressee } from '../content/deadLetters.ts';
+import { openDeadLetters } from '../ui/deadLetters.ts';
 import { retireRun, writeSave, type KeyValue, type RunState, type SaveFile } from '../core/save.ts';
 import { faceOf, FACES, instrumental, isFem, muster, PLAYER_FACE, rankWord, senior } from '../core/service.ts';
 import type { Settings } from '../core/settings.ts';
@@ -215,6 +218,7 @@ export class Runner {
       await says('Прибыло пополнение. Имя!');
       const taken = [...this.save.memory.names, ...run.formerNames, run.name, ...Object.values(run.roster).map((s) => s.name)];
       const given = await plate.askName(taken, run.gender);
+      void reportArrival();
       await plate.callout(given.name);
       run.formerNames.push(run.name);
       run.name = newName = given.name;
@@ -375,6 +379,26 @@ export class Runner {
       case 'assemble':
         await this.assemble();
         return;
+      case 'deadLetters':
+        await this.deadLetters();
+        return;
+    }
+  }
+
+  /**
+   * The crate of undelivered letters: authored ones and other players' (approved, if the server answers), and the
+   * player's own replies home, each put in only by an explicit press (`boxed_<n>` remembers which).
+   */
+  private async deadLetters(): Promise<void> {
+    const run = this.live;
+    const others = await fetchBoxLetters(6);
+    const mine = Object.entries(run.replies).map(([n, text]) => ({ n: Number(n), to: replyAddressee(Number(n)), text, sent: run.flags.includes(`boxed_${n}`) }));
+    this.d.plate.el.hidden = true;
+    try {
+      const res = await openDeadLetters(this.d.ui, { reduced: this.d.reduced, others, mine, send: (m) => postBoxLetter(m.to, m.text) });
+      for (const n of res.sent) this.host().flag_set(`boxed_${n}`);
+    } finally {
+      this.d.plate.el.hidden = false;
     }
   }
 
@@ -641,6 +665,13 @@ export class Runner {
     this.d.plate.el.hidden = true;
     await this.music.stop();
     const records = runRecords(run);
+    // The run's yes/no answers go to the shared register once, even if the finale is replayed after a reload.
+    if (!has('run_reported')) {
+      void reportRun(this.report(ending));
+      run.flags.push('run_reported');
+      this.save.run = structuredClone(run);
+      writeSave(this.d.store, this.save);
+    }
     const res = await runFinale({
       stage: this.d.stage,
       ui: this.d.ui,
@@ -657,8 +688,28 @@ export class Runner {
       register: [...this.save.memory.records.map((r) => ({ ...r, crossed: true })), ...records.map((r) => ({ ...r, crossed: false }))],
       formerNames: [...run.formerNames],
     });
+    // The name given at the wall is one more recruit in the shared register.
+    if (res.newName) void reportArrival();
     const done = retireRun(this.save, { records, ending, next: res.newName });
     writeSave(this.d.store, done);
+  }
+
+  /** What the finished run tells the shared register: yes/no answers, no names. */
+  private report(ending: Ending): RunReport {
+    const run = this.live;
+    const has = (f: string) => run.flags.includes(f);
+    const speech = (['truth', 'hollow', 'order', 'silence', 'mixed'] as const).find((k) => has(`speech_${k}`)) ?? null;
+    return {
+      ending,
+      covered: run.flags.some((f) => f.startsWith('covered_')),
+      krypotkinKill: has('krypotkin_killed_one'),
+      recon: has('recon'),
+      caught: has('caught_creature'),
+      mutiny: has('mutiny'),
+      general: run.general === PLAYER_FACE,
+      speech: run.general === PLAYER_FACE ? (speech satisfies SpeechName | null) : null,
+      returned: Math.min(2, run.formerNames.length),
+    };
   }
 }
 

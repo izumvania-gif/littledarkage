@@ -108,6 +108,27 @@ button {
   font-size: 1.2rem;
 }
 
+.register-line {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.register-line:empty {
+  display: none;
+}
+
+.arrived {
+  font-family: var(--poster);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+}
+
+.stat {
+  color: var(--muted-dark);
+  font-size: 0.95rem;
+}
+
 .warning {
   padding-left: 0.9rem;
   border-left: 5px solid var(--red);

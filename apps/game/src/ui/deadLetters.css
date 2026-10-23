@@ -1,0 +1,365 @@
+/*
+ * The box of undelivered letters: a dark table over the barracks, a pile of paper triangles in the crate, cream
+ * plates with the words. The addresses are DOM on the paper; ink and stamp colours keep 4.5:1 and more on it.
+ * Sizes are in rem, so the large-text setting grows everything.
+ */
+.dl {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  overflow: auto;
+  background: rgba(15, 14, 13, 0.93);
+  opacity: 0;
+  transition: opacity 0.24s ease-out;
+}
+
+.dl.dl-in {
+  opacity: 1;
+}
+
+.dl.dl-reduced,
+.dl.dl-reduced * {
+  transition: none !important;
+}
+
+.dl-wrap {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  align-items: start;
+  gap: 1.2rem 1.6rem;
+  min-height: 100%;
+  padding: 1.4rem 1.6rem 1.6rem;
+}
+
+.dl-main {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.dl-plate {
+  box-sizing: border-box;
+  padding: 1rem 1.2rem 1.1rem;
+  background: var(--cream);
+  color: var(--ink);
+  border-top: 5px solid var(--ink);
+  font-family: var(--serif);
+}
+
+.dl-plate p {
+  margin: 0;
+}
+
+.dl-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.dl-title {
+  margin: 0;
+  font: 1.15rem/1.2 var(--poster);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dl-sub {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.dl-hint,
+.dl-note,
+.dl-meta {
+  color: var(--muted-cream);
+}
+
+/* ---------- the crate ---------- */
+
+.dl-crate {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 1.1rem 0.9rem;
+  align-content: start;
+  margin: 0;
+  padding: 1.2rem 1rem 1.4rem;
+  list-style: none;
+  /* The crate's boards, drawn in CSS. */
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 3px), rgba(0, 0, 0, 0.35) calc(25% - 3px) 25%),
+    linear-gradient(#3b2f25, #2d241d);
+  border: 3px solid #1d1714;
+}
+
+.dl-crate li {
+  display: grid;
+}
+
+.dl-tri {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 0.35rem;
+  aspect-ratio: 16 / 9;
+  padding: 0.75rem 0.6rem 0;
+  border: none;
+  background: none;
+  color: #22304a;
+  cursor: pointer;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.15s ease-out;
+}
+
+.dl-tri:hover,
+.dl-tri:focus-visible {
+  transform: rotate(0deg) translateY(-3px);
+}
+
+.dl-tri:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
+}
+
+/* The folded triangle as it lies face up: the wide edge on top, where the address goes, the point down. */
+.dl-tri-paper {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 0.7px), rgba(60, 44, 24, 0.26) 50%, transparent calc(50% + 0.7px)),
+    linear-gradient(transparent 92%, rgba(60, 44, 24, 0.18)),
+    radial-gradient(ellipse at 50% 25%, #ece1c6, #d6c49c);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.5));
+}
+
+.dl-tri-to {
+  position: relative;
+  max-width: 86%;
+  padding: 0 0.2rem;
+  font: 1rem/1.1 var(--hand);
+  text-align: center;
+  /* A thin wash of paper behind the words, so the fold line never crosses them. */
+  background: radial-gradient(closest-side, rgba(236, 225, 198, 0.95), rgba(236, 225, 198, 0));
+}
+
+.dl-stamp {
+  position: relative;
+  padding: 0 0.3em;
+  border: 1.5px solid #4a2b63;
+  background: rgba(233, 221, 193, 0.9);
+  color: #4a2b63;
+  font: 0.62rem/1.4 var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+}
+
+.dl-stamp-inline {
+  position: static;
+  display: inline-block;
+  font-size: 0.78rem;
+  transform: rotate(-3deg);
+}
+
+/* ---------- the player's replies ---------- */
+
+.dl-mine {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.dl-consent {
+  padding: 0.5rem 0.65rem;
+  border-left: 4px solid var(--red);
+  background: var(--paper);
+}
+
+.dl-mine-list {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dl-reply {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 0.7rem;
+  border-top: 1.5px solid rgba(28, 26, 24, 0.35);
+}
+
+.dl-reply-to {
+  font-weight: 700;
+}
+
+.dl-reply-text {
+  color: #26304f;
+  font: 1.02rem/1.35 var(--hand);
+  overflow-wrap: anywhere;
+}
+
+.dl-status {
+  min-height: 1.5em;
+  color: var(--muted-cream);
+  font-style: italic;
+}
+
+.dl-status:focus {
+  outline: none;
+}
+
+/* ---------- buttons ---------- */
+
+.dl-btn {
+  justify-self: start;
+  padding: 0.5rem 0.85rem;
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: 700 1rem var(--serif);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dl-btn:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.dl-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.dl-btn:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
+.dl-btn kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  border: 1.5px solid currentColor;
+  font: 0.8em var(--mono);
+  text-align: center;
+}
+
+.dl-send.dl-armed,
+.dl-main-btn {
+  border-color: var(--red);
+  background: var(--red);
+  color: var(--paper);
+}
+
+.dl-send.dl-armed:hover,
+.dl-main-btn:hover {
+  border-color: var(--red-deep);
+  background: var(--red-deep);
+}
+
+.dl-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dl-close {
+  flex: none;
+  padding: 0.3rem 0.7rem;
+}
+
+/* ---------- one letter, open ---------- */
+
+.dl-reader {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 14, 13, 0.94);
+}
+
+.dl-reader-body {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.dl-sheet {
+  position: relative;
+  flex: none;
+}
+
+.dl-canvas {
+  display: block;
+}
+
+.dl-side {
+  display: grid;
+  gap: 0.7rem;
+  width: min(21rem, 30vw);
+}
+
+.dl-text {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  overflow-y: auto;
+  font-family: var(--hand);
+  line-height: 1.42;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 44, 24, 0.5) transparent;
+}
+
+.dl-text.dl-shown {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dl-text:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 4px;
+}
+
+.dl-text p {
+  margin: 0 0 0.45em;
+  text-indent: 1.4em;
+}
+
+.dl-text p:first-child {
+  text-indent: 0;
+}
+
+.dl-hand-child {
+  letter-spacing: 0.02em;
+}
+
+.dl-hand-typed {
+  font-family: var(--mono);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .dl-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .dl-reader-body {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .dl-side {
+    width: auto;
+  }
+}

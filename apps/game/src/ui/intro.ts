@@ -3,6 +3,8 @@
  * browser start sound, so nothing plays before it.
  */
 import type { Output, Settings } from '../core/settings.ts';
+import type { RegisterResponse } from '../net/api.ts';
+import { arrivedLine, pickStats } from '../net/stats.ts';
 import { h } from './dom.ts';
 
 const OUTPUTS: { value: Output; label: string }[] = [
@@ -11,8 +13,17 @@ const OUTPUTS: { value: Output; label: string }[] = [
   { value: 'mono', label: 'Моно или одно ухо' },
 ];
 
-export function showIntro(root: HTMLElement, settings: Settings, returning: boolean): Promise<Settings> {
+/**
+ * `register`, when given, is the shared register on its way from the server: the count of recruits and a line
+ * of what the other barracks did fill in when (and if) it arrives; offline the screen simply has no such lines.
+ */
+export function showIntro(root: HTMLElement, settings: Settings, returning: boolean, register?: { data: Promise<RegisterResponse | null>; veteran: boolean }): Promise<Settings> {
   return new Promise((resolve) => {
+    const book = h('div', { class: 'register-line', attrs: { 'aria-live': 'polite' } });
+    void register?.data.then((r) => {
+      if (!r || !book.isConnected) return;
+      book.append(h('p', { class: 'arrived', text: arrivedLine(r.arrived) }), ...pickStats(r, register.veteran, Math.random).map((line) => h('p', { class: 'stat', text: line })));
+    });
     const radios = OUTPUTS.map(({ value, label }) => {
       const input = h('input', { attrs: { type: 'radio', name: 'output', value, id: `output-${value}` } });
       input.checked = settings.output === value;
@@ -27,11 +38,12 @@ export function showIntro(root: HTMLElement, settings: Settings, returning: bool
         { class: 'intro-col' },
         h('h1', { text: 'Короткий тёмный век', attrs: { id: 'intro-title' } }),
         h('p', { class: 'lead', text: 'Игра о крысиных солдатах, которые в темноте туннелей защищают свою коммуну. По живой ролевой игре.' }),
+        book,
         h('p', { class: 'warning' }, h('strong', { text: 'В игре: ' }), 'война, гибель, жестокое насилие, мотив самоубийства, мигающий свет.'),
         h('fieldset', { class: 'seg' }, h('legend', { text: 'Чем вы слушаете' }), ...radios),
         h('p', { class: 'note', text: 'В темноте звук — половина того, что вы знаете. Лучше всего в наушниках.' }),
         button,
-        h('p', { class: 'foot', text: 'Игра сохраняется в этом браузере.' }),
+        h('p', { class: 'foot', text: 'Игра сохраняется в этом браузере. В общую книгу учёта уходит только счёт, без имён.' }),
       ),
     );
     root.append(screen);

@@ -1,4 +1,5 @@
-# Amvera deploy config: build from the Dockerfile. The /data mount is reserved for the online layer (not used yet).
+# Amvera deploy config: build from the Dockerfile; the persistent /data mount holds the SQLite database of the online
+# layer (the shared register and the box of undelivered letters). ADMIN_TOKEN (project variable) enables /admin.
 meta:
   environment: docker
   toolchain:

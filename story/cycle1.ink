@@ -531,6 +531,14 @@
 Ты пишешь домой. Ответ уйдёт с утренней почтой и, как все ответы, опоздает.
 -> DONE
 
+=== c1_free_deadletters ===
+#do:walk:player:mailbox
+Рядом с почтовым ящиком стоит второй, без щели: ящик из-под патронов. На крышке мелом: «НЕДОШЕДШИЕ».
+Сюда кладут треугольники, которые не нашли адресата. Обратно их не отправляют. Их читают.
+#do:deadletters
+Ты закрываешь крышку. Мел на ней стёрся там, где за неё берутся.
+-> DONE
+
 === c1_alarm ===
 #do:light:alarm #do:sfx:siren
 #do:show:general,norkin,korochkina,podvalny,syrkov,sedoy,khvostov,kroshkin,cherdakov,zernov,player

@@ -13,6 +13,7 @@ import { LINE, PLAYER } from './content/recruits.ts';
 import { SPEECH } from './content/speech.ts';
 import { makeBattle } from './core/battle.ts';
 import { checkName } from './core/names.ts';
+import { fetchRegister, reportArrival } from './net/api.ts';
 import { loadSave, newRun, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
 import { loadSettings, saveSettings, type Settings } from './core/settings.ts';
 import { AudioEngine } from './engine/audio.ts';
@@ -129,7 +130,12 @@ async function prologue(plate: CaptionPlate, scene: LineupScene, audio: AudioEng
     if (who === PLAYER) {
       // The name given in the last finale's lineup starts this playthrough; otherwise the player gives one now.
       const given = save.memory.nextName;
-      player = given && checkName(given.name, save.memory.names).ok ? given : await plate.askName(save.memory.names);
+      // A name given at the last finale's wall was counted there.
+      if (given && checkName(given.name, save.memory.names).ok) player = given;
+      else {
+        player = await plate.askName(save.memory.names);
+        void reportArrival();
+      }
       await plate.callout(player.name);
     } else {
       await plate.callout(who);
@@ -278,7 +284,8 @@ async function main(): Promise<void> {
   });
 
   let save = loadSave(store);
-  settings = await showIntro(ui, settings, save.run !== null);
+  // The shared register fills in on the first screen if the server answers; the game never waits for it.
+  settings = await showIntro(ui, settings, save.run !== null, { data: fetchRegister(), veteran: save.memory.names.length > 0 });
   saveSettings(store, settings);
   audio.unlock(settings.output);
   await lightsOn(stage, dark, audio, reduced);

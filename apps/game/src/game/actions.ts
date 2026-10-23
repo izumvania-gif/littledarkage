@@ -29,7 +29,9 @@ export type Action =
   /** The general's peaked cap goes to this face (the new general). */
   | { kind: 'cap'; id: string }
   /** The box with the creature taken alive: shown or taken away. */
-  | { kind: 'box'; on: boolean };
+  | { kind: 'box'; on: boolean }
+  /** The crate of undelivered letters (ui/deadLetters.ts): read others', put in one's own replies. */
+  | { kind: 'deadLetters' };
 
 const LIGHTS: readonly Light[] = ['warm', 'disco', 'dark', 'alarm'];
 const TRACKS: readonly TrackName[] = ['concert', 'disco', 'tape', 'concert2', 'concert3', 'riot'];
@@ -77,6 +79,8 @@ export function parseAction(src: string): Action | null {
       return a ? { kind, id: a } : null;
     case 'box':
       return a === 'on' || a === 'off' ? { kind, on: a === 'on' } : null;
+    case 'deadletters':
+      return { kind: 'deadLetters' };
     default:
       return null;
   }
