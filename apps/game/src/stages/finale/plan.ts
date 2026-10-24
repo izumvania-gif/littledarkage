@@ -5,7 +5,7 @@
  */
 import { LETTERS, letter } from '../../content/letters.ts';
 import { PLAYER_INDEX } from '../../content/recruits.ts';
-import { sameName } from '../../core/names.ts';
+import { genitive, sameName } from '../../core/names.ts';
 import type { Ending, FinaleContext } from './types.ts';
 
 export type Beat =
@@ -103,7 +103,7 @@ export function registerPage<T>(entries: readonly T[], fit: number): { shown: T[
 
 /** The address on the white envelope: the family of the soldier. */
 export function envelopeAddress(name: string, fem: boolean): string {
-  return `Семье ${fem ? 'рядовой' : 'рядового'} ${name}`;
+  return `Семье ${fem ? 'рядовой' : 'рядового'} ${genitive(name, fem)}`;
 }
 
 /**

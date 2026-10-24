@@ -66,9 +66,9 @@ test('a schema 2 save that passed the workshop resumes after it', () => {
 test('a schema 1 save migrates: the soldier keeps the name and gets three hits', () => {
   const old = JSON.stringify({ schema: 1, generation: 4, run: { name: 'Петрова', gender: 'f', stage: 'registered' }, memory: { names: ['Сырков'] } });
   const s = parseSave(old);
-  assert.equal(s?.schema, 4);
+  assert.equal(s?.schema, 5);
   const { roster, seed, ...run } = s!.run!;
-  assert.deepEqual(run, { name: 'Петрова', gender: 'f', scene: 'workshop', hp: 3, trust: { norkin: 1 }, flags: [], replies: {}, battle: null, general: null, formerNames: [] });
+  assert.deepEqual(run, { name: 'Петрова', gender: 'f', scene: 'workshop', hp: 3, trust: { norkin: 1 }, flags: [], replies: {}, battle: null, general: null, formerNames: [], dative: 'Петровой' });
   assert.equal(roster.player?.name, 'Петрова');
   assert.equal(typeof seed, 'number');
   assert.deepEqual(s?.memory.names, ['Сырков']);

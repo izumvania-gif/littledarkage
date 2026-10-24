@@ -19,9 +19,9 @@ const add = (label: string, run: () => Promise<unknown>) => {
   });
   panel.append(b);
 };
-add('9 — рядовой', () => openLetter(ui, 9, { gender: 'm', name: 'Петров', reduced, canReply: true }));
-add('9 — рядовая', () => openLetter(ui, 9, { gender: 'f', name: 'Петрова', reduced, canReply: true }));
-add('7 — рядовая', () => openLetter(ui, 7, { gender: 'f', name: 'Петрова', reduced, canReply: true }));
+add('9 — рядовой', () => openLetter(ui, 9, { gender: 'm', dative: 'Петрову', reduced, canReply: true }));
+add('9 — рядовая', () => openLetter(ui, 9, { gender: 'f', dative: 'Петровой', reduced, canReply: true }));
+add('7 — рядовая', () => openLetter(ui, 7, { gender: 'f', dative: 'Петровой', reduced, canReply: true }));
 add('14 — читает Норкин', () => showLetter(ui, 14, { reduced, reader: 'norkin' }));
 add('6 — детское', () => showLetter(ui, 6, { reduced }));
 add('13 — патриоты', () => showLetter(ui, 13, { reduced, reader: 'podvalny' }));

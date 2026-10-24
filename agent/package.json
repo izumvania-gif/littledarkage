@@ -1,0 +1,15 @@
+{
+  "name": "@littledarkage/agent",
+  "private": true,
+  "type": "module",
+  "description": "Play «Короткий тёмный век» as an AI agent: the game in words, over HTTP, a CLI or MCP; and the automatic playthroughs.",
+  "bin": { "lda-agent": "./lda.mjs" },
+  "scripts": {
+    "serve": "node lda.mjs serve",
+    "mcp": "node lda.mjs mcp",
+    "selftest": "node selftest.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}

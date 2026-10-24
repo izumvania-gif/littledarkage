@@ -5,10 +5,11 @@
  * Bump SAVE_SCHEMA and add a migration in parseSave when the shape changes.
  */
 import { MAX_HP, type Battle } from './battle.ts';
+import { dative } from './names.ts';
 import { FACES, MAX_RANK, newRoster, PLAYER_FACE, type Roster } from './service.ts';
 import { isSceneId, type SceneId } from '../content/scenes.ts';
 
-export const SAVE_SCHEMA = 4;
+export const SAVE_SCHEMA = 5;
 export const SAVE_KEY = 'lda.save';
 export const BACKUP_KEY = 'lda.save.bak';
 
@@ -55,6 +56,8 @@ export interface RunState {
   general: string | null;
   /** The player's earlier names in this run, after falling in battle and coming back under a new one. */
   formerNames: string[];
+  /** The current name in the dative, as the player confirmed it for the triangles («Кому: Петровой»). */
+  dative: string;
 }
 
 /** A line of the register: a soldier's name and what the book says of them. */
@@ -84,13 +87,19 @@ export interface SaveFile {
 
 export type KeyValue = Pick<Storage, 'getItem' | 'setItem'>;
 
+/** Set when another tab has taken the game over (core/tabs.ts): this one must not write any more. */
+let readOnly = false;
+export function setSaveReadOnly(v: boolean): void {
+  readOnly = v;
+}
+
 export function freshSave(): SaveFile {
   return { schema: SAVE_SCHEMA, generation: 0, run: null, memory: { names: [], records: [], nextName: null, endings: [] } };
 }
 
 /** A new soldier at the lineup. */
 export function newRun(name: string, gender: Gender, seed = Math.floor(Math.random() * 1e9)): RunState {
-  return { name, gender, scene: 'workshop', hp: MAX_HP, trust: { norkin: 1 }, flags: [], replies: {}, battle: null, roster: newRoster(name), seed, general: null, formerNames: [] };
+  return { name, gender, scene: 'workshop', hp: MAX_HP, trust: { norkin: 1 }, flags: [], replies: {}, battle: null, roster: newRoster(name), seed, general: null, formerNames: [], dative: dative(name, gender === 'f') };
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
@@ -149,6 +158,8 @@ function parseRun(v: unknown): RunState | null {
     seed: typeof v.seed === 'number' ? v.seed : seedOf(v.name),
     general: typeof v.general === 'string' ? v.general : null,
     formerNames: strings(v.formerNames),
+    // Schemas 1–4 had no confirmed form: the guessed one stands in.
+    dative: typeof v.dative === 'string' && v.dative.trim() ? v.dative : dative(v.name, v.gender === 'f'),
   };
 }
 
@@ -188,7 +199,7 @@ export function loadSave(store: KeyValue | null): SaveFile {
 
 /** Keeps the previous save as the backup, then writes the new one. Returns false when storage refused. */
 export function writeSave(store: KeyValue | null, save: SaveFile): boolean {
-  if (!store) return false;
+  if (!store || readOnly) return false;
   try {
     const previous = store.getItem(SAVE_KEY);
     if (previous) store.setItem(BACKUP_KEY, previous);

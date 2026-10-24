@@ -44,6 +44,15 @@
   letter-spacing: 0.02em;
 }
 
+/* «Подсказки слепого режима»: the partner's line says whose it is. */
+.sk-line .who .mine {
+  margin-left: 0.5em;
+  padding: 0 0.35em;
+  background: var(--ink);
+  color: var(--cream);
+  font-weight: 700;
+}
+
 .sk-line .text {
   line-height: 1.2;
   font: max(0.95rem, calc(19 * var(--u))) var(--serif);
@@ -224,6 +233,27 @@
 .sk-center .sub {
   color: var(--muted-cream);
   font-size: max(0.8rem, calc(15 * var(--u)));
+}
+
+.sk-action {
+  justify-self: center;
+  margin-top: 0.3rem;
+  pointer-events: auto;
+  padding: calc(5 * var(--u)) calc(16 * var(--u));
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.sk-action:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.sk-action:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
 }
 
 .sk-debug {

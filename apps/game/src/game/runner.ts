@@ -7,6 +7,7 @@
  */
 import storyJson from '../../../../story/main.ink';
 import { makeBattle, MAX_HP, report } from '../core/battle.ts';
+import { dative } from '../core/names.ts';
 import { recruitsAtTheWall, runRecords } from '../core/register.ts';
 import { fetchBoxLetters, postBoxLetter, reportArrival, reportRun, type RunReport, type SpeechName } from '../net/api.ts';
 import { replyAddressee } from '../content/deadLetters.ts';
@@ -39,6 +40,19 @@ import type { CaptionPlate } from '../ui/caption.ts';
 import { h, nextPress, wait } from '../ui/dom.ts';
 import { openLetter, showLetter } from '../ui/letter.ts';
 import { parseAction, type Action, type TrackName } from './actions.ts';
+
+/**
+ * In a battle and in the brawl the browser asks before the tab closes (concept §10 «Сохранения»): a battle saves
+ * every turn, but a turn half-planned or a room half-fought is lost.
+ */
+function askBeforeLeaving(on: boolean): void {
+  window.onbeforeunload = on
+    ? (e) => {
+        e.preventDefault();
+        return '';
+      }
+    : null;
+}
 
 /** Tracks the music engine has (the script may name ones still being written). */
 function playable(t: TrackName): t is TrackName & TrackId {
@@ -223,6 +237,7 @@ export class Runner {
       run.formerNames.push(run.name);
       run.name = newName = given.name;
       run.gender = given.gender;
+      run.dative = await plate.askDative(dative(given.name, given.gender === 'f'));
       run.hp = MAX_HP;
       run.trust = { norkin: 1 };
       fallen.push(PLAYER_FACE);
@@ -356,7 +371,7 @@ export class Runner {
       case 'letterOpen':
       case 'letterReply': {
         this.music.duck(true);
-        const res = await openLetter(this.d.ui, a.n, { gender: this.live.gender, name: this.live.name, reduced: this.d.reduced, canReply: true, onFold: () => this.sound.paper() });
+        const res = await openLetter(this.d.ui, a.n, { gender: this.live.gender, dative: this.live.dative, reduced: this.d.reduced, canReply: true, onFold: () => this.sound.paper() });
         if (a.kind === 'letterOpen') this.host().flag_set(`letter${a.n}_${res.read}`);
         if (res.reply?.trim()) {
           this.live.replies[String(a.n)] = res.reply.trim();
@@ -554,6 +569,7 @@ export class Runner {
     this.d.plate.clear();
     this.d.plate.header(sc.num, sc.title);
     let res: Awaited<ReturnType<typeof runMutiny>>;
+    askBeforeLeaving(true);
     try {
       res = await runMutiny({
         stage: this.d.stage,
@@ -577,6 +593,7 @@ export class Runner {
         },
       });
     } finally {
+      askBeforeLeaving(false);
       await this.music.stop();
       this.barracks?.setVisible(true);
     }
@@ -625,7 +642,12 @@ export class Runner {
       // Who goes by which name now: the soldiers of a face that fell are someone else (b2's Пышкин is Сырков's face).
       names: Object.fromEntries(setup.pairs.flatMap((p) => [p.striker, p.coord ?? '']).filter((id) => id && id !== PLAYER_ID).map((id) => [id, this.who(faceOf(id))])),
     };
-    await runBattle(ctx);
+    askBeforeLeaving(true);
+    try {
+      await runBattle(ctx);
+    } finally {
+      askBeforeLeaving(false);
+    }
     const b = ctx.battle;
     const me = b.coords.find((c) => c.id === PLAYER_ID);
     const meOnField = b.units.find((u) => u.id === PLAYER_ID);
@@ -683,6 +705,7 @@ export class Runner {
         .map(([n, text]) => ({ n: Number(n), text }))
         .sort((a, b) => a.n - b.n),
       player: { name: run.name, fem: run.gender === 'f' },
+      dative: run.dative,
       recruits: ending === 'emptyWall' ? [] : recruitsAtTheWall(run, WALL_FACES),
       taken: [...this.save.memory.names],
       register: [...this.save.memory.records.map((r) => ({ ...r, crossed: true })), ...records.map((r) => ({ ...r, crossed: false }))],

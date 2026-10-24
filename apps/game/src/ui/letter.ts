@@ -190,10 +190,10 @@ function button(text: string, key: string | null, main = false): HTMLButtonEleme
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The player's own letter: unfold, read, choose, maybe reply, fold back. */
-export async function openLetter(ui: HTMLElement, n: number, opts: { gender: Gender; name: string; reduced: boolean; canReply: boolean; onFold?: () => void }): Promise<LetterResult> {
+export async function openLetter(ui: HTMLElement, n: number, opts: { gender: Gender; /** The player's name in the dative, for «Кому: …». */ dative: string; reduced: boolean; canReply: boolean; onFold?: () => void }): Promise<LetterResult> {
   const l = letter(n);
   await fontsReady();
-  const art = paintSheet(l, addressee(opts.name));
+  const art = paintSheet(l, addressee(opts.dative));
   const v = new LetterView(ui, l, letterText(n, opts.gender), art, FOLDED, opts.reduced, `Письмо ${l.fromLine}`);
   const title = h('h2', { class: 'lt-title', text: 'Тебе письмо' });
   const meta = h('p', { class: 'lt-meta', text: `${cap(l.fromLine)}.` });

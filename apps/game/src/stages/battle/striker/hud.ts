@@ -7,6 +7,7 @@ import { CMD_LABEL, type Cmd } from '../../../core/battle.ts';
 import type { Hand } from '../../../content/soldiers.ts';
 import { REF_W } from '../../../render/palette.ts';
 import type { Fit } from '../../../render/stage.ts';
+import { hintFor } from '../../../engine/keys.ts';
 import { h } from '../../../ui/dom.ts';
 import './striker.css';
 
@@ -39,6 +40,8 @@ export class StrikerHud {
   private readonly debugBox: HTMLElement;
   private fit: Fit = { scale: 1, x: 0, y: 0 };
   captionsOn = true;
+  /** «Подсказки слепого режима»: the partner's lines carry «это твой». */
+  blindHints = false;
 
   constructor(ui: HTMLElement) {
     this.lines = h('div', { class: 'sk-layer', attrs: { 'aria-live': 'polite', 'aria-label': 'Голоса координаторов' } });
@@ -48,27 +51,28 @@ export class StrikerHud {
     this.slots = h('div', { class: 'sk-slots' });
     this.done = h('button', { class: 'sk-done', text: 'Готово', attrs: { type: 'button' } });
     this.dock = h('div', { class: 'sk-dock' }, h('div', { class: 'sk-bar' }, this.barFill), h('div', { class: 'sk-row' }, this.slots, this.done));
-    this.sackKey = h('span', { class: 'sk-sack' }, ' · ', h('kbd', { text: 'G' }), ' мешок');
+    this.sackKey = h('span', { class: 'sk-sack' }, ' · ', h('kbd', { text: hintFor('KeyG') }), ' мешок');
     this.sackKey.hidden = true;
     this.keys = h(
       'p',
       { class: 'sk-keys' },
+      // The keys as the player has them (settings → «Клавиши»).
       ...keyList([
-        ['W', 'шаг, дважды — два'],
-        ['S', 'назад'],
-        ['A D', 'вбок'],
-        ['Q E', 'поворот'],
-        ['X', 'кругом'],
-        ['Z', 'стой'],
-        ['Space', 'прыжок'],
-        ['F', 'нюхать'],
+        [['KeyW'], 'шаг, дважды — два'],
+        [['KeyS'], 'назад'],
+        [['KeyA', 'KeyD'], 'вбок'],
+        [['KeyQ', 'KeyE'], 'поворот'],
+        [['KeyX'], 'кругом'],
+        [['KeyZ'], 'стой'],
+        [['Space'], 'прыжок'],
+        [['KeyF'], 'нюхать'],
       ]),
       this.sackKey,
       ...keyList([
-        ['Backspace', 'стереть'],
-        ['Enter', 'готово'],
-        ['C', 'подписи'],
-        ['P', 'пауза'],
+        [['Backspace'], 'стереть'],
+        [['Enter'], 'готово'],
+        [['KeyC'], 'подписи'],
+        [['KeyP'], 'пауза'],
       ], true),
     );
     this.center = h('div', { class: 'sk-center', attrs: { role: 'status' } });
@@ -146,7 +150,7 @@ export class StrikerHud {
     const el = h(
       'div',
       { class: `sk-line hand-${opts.hand}${opts.partner ? ' partner' : ''}${opts.whisper ? ' whisper' : ''}`, attrs: { 'data-who': id } },
-      h('span', { class: 'who', text: opts.name }),
+      h('span', { class: 'who' }, opts.name, opts.partner && this.blindHints ? h('b', { class: 'mine', text: 'это твой' }) : null),
       h('span', { class: 'text', text }),
       opts.hint ? h('span', { class: 'hint', text: opts.hint }) : null,
     );
@@ -218,10 +222,13 @@ export class StrikerHud {
     return this.captionsOn;
   }
 
-  /** A plate in the middle (going out alone, pause); null hides it. */
-  say(text: string | null, sub?: string): void {
+  /** A plate in the middle (going out alone, pause); null hides it. `action` adds one button (the pause's «Настройки»). */
+  say(text: string | null, sub?: string, action?: { label: string; run: () => void }): void {
     this.center.hidden = text === null;
-    if (text !== null) this.center.replaceChildren(h('p', { class: 'title', text }), sub ? h('p', { class: 'sub', text: sub }) : '');
+    if (text === null) return;
+    const button = action ? h('button', { class: 'sk-action', text: action.label, attrs: { type: 'button' } }) : null;
+    button?.addEventListener('click', () => action?.run());
+    this.center.replaceChildren(h('p', { class: 'title', text }), sub ? h('p', { class: 'sub', text: sub }) : '', button ?? '');
   }
 
   destroy(): void {
@@ -229,13 +236,13 @@ export class StrikerHud {
   }
 }
 
-function keyList(items: [string, string][], lead = false): (Node | string)[] {
+function keyList(items: [string[], string][], lead = false): (Node | string)[] {
   const out: (Node | string)[] = [];
   items.forEach(([keys, label], i) => {
     if (i || lead) out.push(' · ');
-    keys.split(' ').forEach((k, j) => {
+    keys.forEach((k, j) => {
       if (j) out.push(' ');
-      out.push(h('kbd', { text: k }));
+      out.push(h('kbd', { text: hintFor(k) }));
     });
     out.push(` ${label}`);
   });

@@ -31,6 +31,8 @@ export interface FinaleContext {
   /** The player's replies home this run, in order (letter number and text); read in the dark at the start. */
   replies: { n: number; text: string }[];
   player: { name: string; fem: boolean };
+  /** The current name in the dative as the player confirmed it («Кому: …»); the former names are declined by guess. */
+  dative?: string;
   /** Recruits' names called out in the lineup: the faces of the fallen under their next names (empty for emptyWall). */
   recruits: string[];
   /** Names the roll call refuses (crossed out in the book across playthroughs). */

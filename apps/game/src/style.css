@@ -194,6 +194,27 @@ button {
   background: var(--red-deep);
 }
 
+.intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+/* A quiet button on the dark first screen. */
+.ghost {
+  padding: 0.65rem 1.2rem;
+  border: 2px solid var(--cream);
+  background: transparent;
+  color: var(--cream);
+  font-weight: 700;
+}
+
+.ghost:hover {
+  background: var(--cream);
+  color: var(--ink);
+}
+
 .secondary {
   padding: 0.6rem 1.2rem;
   border: 2px solid var(--ink);
@@ -305,6 +326,10 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+}
+
+.naming-prefix {
+  font: max(1rem, calc(22 * var(--u))) var(--hand);
 }
 
 .naming input[type='text'] {

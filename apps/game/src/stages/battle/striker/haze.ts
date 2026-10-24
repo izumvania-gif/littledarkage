@@ -4,9 +4,14 @@
  * glow where something smells. Plain, the haze gives a wide, soft direction and strength; after «нюхай» it
  * narrows to a clear direction and distance. Never a shape. One particle container of tiny grains plus a
  * soft cloud per smell, so it costs next to nothing on integrated graphics.
+ *
+ * With «Подсказки слепого режима» the haze gives way to clear sectors (concept «Доступность»): eight directions
+ * by three distances around the head, the top always ahead. Plain, a whole wedge lights up — the direction is
+ * known, not the distance; after «нюхай» only the cell where the smell is.
  */
-import { Container, Particle, ParticleContainer, Sprite, Texture } from 'pixi.js';
+import { Container, Graphics, Particle, ParticleContainer, Sprite, Texture } from 'pixi.js';
 import type { Scent } from '../../../core/battle.ts';
+import { AHEAD, RINGS, sectorCells, WEDGE, WEDGES } from './sectors.ts';
 
 /** Reference pixels per cell of the field. */
 export const CELL = 105;
@@ -16,6 +21,7 @@ const R_MIN = 34;
 const R_MAX = 300;
 const DUST = 0xded2b8;
 const STRONG = 0xa0b280;
+
 
 interface Grain {
   p: Particle;
@@ -62,6 +68,9 @@ export class Haze {
   private sharp = 0;
   private sharpTarget = 0;
   private time = 0;
+  /** «Подсказки слепого режима»: sectors instead of the haze. */
+  sectors = false;
+  private readonly grid = new Graphics();
 
   constructor() {
     this.grainTex = canvasTexture(4, (x) => {
@@ -92,6 +101,8 @@ export class Haze {
       this.dots.addParticle(p);
     }
     this.view.addChild(this.dots);
+    this.grid.visible = false;
+    this.view.addChild(this.grid);
   }
 
   /** Area-uniform radius, so the haze is not crowded at the centre. */
@@ -126,6 +137,13 @@ export class Haze {
     this.time += dt;
     const k = this.sharpTarget > this.sharp ? 5 : 1.5;
     this.sharp += (this.sharpTarget - this.sharp) * Math.min(1, dt * k);
+    this.dots.visible = !this.sectors;
+    this.grid.visible = this.sectors;
+    if (this.sectors) {
+      for (const c of this.clouds) c.visible = false;
+      this.drawSectors();
+      return;
+    }
     const sharp = this.sharp;
     const sPhi = lerp(0.62, 0.22, sharp);
     const sR = lerp(150, 30, sharp);
@@ -160,6 +178,31 @@ export class Haze {
       g.p.alpha = Math.min(0.9, d * flicker);
       g.p.tint = strong > d * 0.5 && sharp > 0.5 ? STRONG : DUST;
     }
+  }
+
+  /** Eight wedges by three rings; each cell filled by how strongly it smells now. */
+  private drawSectors(): void {
+    const { fill, strong } = sectorCells(this.whiffs, this.sharpTarget > 0);
+    const g = this.grid;
+    g.clear();
+    for (let i = 0; i < fill.length; i++) {
+      const r1 = RINGS[i]!;
+      const r2 = RINGS[i + 1]!;
+      for (let j = 0; j < WEDGES; j++) {
+        const a1 = AHEAD + (j - 0.5) * WEDGE + 0.02;
+        const a2 = AHEAD + (j + 0.5) * WEDGE - 0.02;
+        const v = fill[i]![j]!;
+        g.moveTo(Math.cos(a1) * r1, Math.sin(a1) * r1)
+          .arc(0, 0, r2, a1, a2)
+          .arc(0, 0, r1, a2, a1, true)
+          .closePath();
+        if (v > 0.02) g.fill({ color: strong[i]![j] ? STRONG : DUST, alpha: 0.18 + 0.6 * Math.min(1, v) });
+        g.stroke({ width: 1.5, color: DUST, alpha: 0.22 });
+      }
+    }
+    // A notch at the top of the outer ring: ahead.
+    const top = RINGS[RINGS.length - 1]!;
+    g.moveTo(-9, -top - 14).lineTo(0, -top - 2).lineTo(9, -top - 14).stroke({ width: 2.5, color: DUST, alpha: 0.6 });
   }
 
   destroy(): void {

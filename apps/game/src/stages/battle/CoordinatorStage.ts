@@ -12,7 +12,9 @@
  */
 import { Container, Graphics, RenderTexture, Sprite } from 'pixi.js';
 import { perform, plan, takesBlow, type Mood } from '../../core/ai.ts';
-import { act, beginTurn, CMD_LABEL, creepPhase, endTurn, mishears, phases, strike, unit, type Battle, type Cmd, type Ev } from '../../core/battle.ts';
+import { act, beginTurn, CMD_LABEL, creepPhase, endTurn, mishears, ORDERS, phases, strike, unit, visible, type Battle, type Cmd, type Ev } from '../../core/battle.ts';
+import { fieldLines } from '../../agent/describe.ts';
+import { registerAgent } from '../../agent/hooks.ts';
 import { say } from '../../core/voice.ts';
 import { TUNING, type BattleDef } from '../../content/battles.ts';
 import { nameOf, PLAYER_ID, SOLDIERS, wordsOf } from '../../content/soldiers.ts';
@@ -27,6 +29,7 @@ import { FIELD_BOTTOM, heardAt, LAMP, pt, ZONE_Y, zoneX } from './coordinator/ge
 import { CoordinatorPanel, PAD, type Order, type Phase } from './coordinator/panel.ts';
 import { cases } from './cases.ts';
 import { bump, type BattleContext, type BattleStage, type StageExit } from './types.ts';
+import { openSettings } from '../../ui/settings.ts';
 
 /** A flash never comes sooner than this after the last one: no more than three a second. */
 const MIN_FLASH_GAP = 1000 / 3;
@@ -102,6 +105,7 @@ export class CoordinatorStage implements BattleStage {
   private destroyed = false;
 
   private readonly offLayout: () => void;
+  private readonly offAgent: () => void;
   private readonly tick = () => this.frame();
   private readonly onKey = (e: KeyboardEvent) => this.key(e);
   private readonly onVisible = () => {
@@ -150,6 +154,7 @@ export class CoordinatorStage implements BattleStage {
         done: () => this.done(),
         accept: (take) => this.decide(take),
         target: (id) => this.aim(id),
+        settings: () => void openSettings(ctx.ui, ctx.settings),
       },
     );
     for (const id of this.mine) if (!unit(this.b, id).alive) this.panel.setGone(id);
@@ -160,6 +165,84 @@ export class CoordinatorStage implements BattleStage {
     window.addEventListener('keydown', this.onKey);
     document.addEventListener('visibilitychange', this.onVisible);
     this.drawTallies();
+    this.offAgent = this.agent();
+  }
+
+  /** Agent mode: the field in words, the commands as actions (agent/hooks.ts). */
+  private agent(): () => void {
+    const phaseWord: Record<Phase, string> = { idle: 'ждать', plan: 'смотреть на поле', orders: 'отдавать команды', exec: 'смотреть, как исполняют', prompt: 'принять удар или нет' };
+    const two = this.mine.length > 1;
+    return registerAgent({
+      name: `Бой: координатор (${this.def.title})`,
+      covers: '.cs',
+      describe: () => {
+        const me = this.b.coords.find((c) => c.id === PLAYER_ID);
+        const queue = this.queue.map((o, i) => `${i + 1}. ${two ? `${this.name(o.to)}: ` : ''}${CMD_LABEL[o.cmd]}`).join('; ');
+        return [
+          `Ход ${this.b.turn} из ${this.b.maxTurns}. Сейчас: ${phaseWord[this.phase]}.${me ? ` Ваши хиты: ${me.hp}.` : ''}`,
+          ...fieldLines(visible(this.b), (id) => this.name(id), this.mine),
+          this.phase === 'plan' || this.phase === 'orders' ? `Команды за ход: ${queue || 'пока нет'} (всего можно ${this.slots}${two ? `, сейчас — для ${this.name(this.target)}` : ''}). Команды — от лица ударника: его лево, его право.` : '',
+          this.phase === 'prompt' ? 'Тварь бьёт вашего ударника: принять удар на себя (accept) или нет (decline)?' : '',
+          // What the zone shouts and the plates say (the panel itself is covered by these words).
+          ...[...this.ctx.ui.querySelectorAll<HTMLElement>('.cs .cs-speech, .cs .cs-hint, .cs .cs-note, .cs .cs-accept')]
+            .filter((el) => el.getClientRects().length > 0)
+            .map((el) => el.innerText.trim().replace(/\s*\n\s*/g, ' '))
+            .filter(Boolean),
+        ].filter(Boolean);
+      },
+      actions: () => {
+        if (this.phase === 'prompt') return [{ id: 'accept', label: 'Принять удар на себя' }, { id: 'decline', label: 'Не принимать' }];
+        if (this.phase !== 'plan' && this.phase !== 'orders') return [];
+        const to = two ? `кому: ${this.mine.filter((id) => unit(this.b, id).alive).join(' | ')} (по умолчанию ${this.target})` : undefined;
+        return [
+          ...ORDERS.map((c) => ({ id: `order:${c}`, label: `Команда «${CMD_LABEL[c]}»`, ...(to ? { arg: to } : {}) })),
+          ...(this.queue.length && this.phase === 'orders' ? [{ id: 'erase', label: 'Стереть последнюю команду' }] : []),
+          { id: 'done', label: this.phase === 'plan' ? 'Готово: насмотрелся, к командам' : 'Готово: команды отданы' },
+          { id: 'auto', label: 'Скомандовать, как другие координаторы: по тому, что видно во вспышке, — и «готово»' },
+        ];
+      },
+      perform: async (id, arg) => {
+        const [verb, rest] = id.split(':');
+        if (verb === 'auto') {
+          if (this.phase !== 'plan' && this.phase !== 'orders') return 'Сейчас не время для команд.';
+          // From the look to the orders: the battle's own promise moves on in a few microtasks.
+          if (this.phase === 'plan') this.done();
+          for (let i = 0; i < 50 && this.phase === 'plan'; i++) await Promise.resolve();
+          if (this.phase !== 'orders') return 'Команд в этом ходу нет.';
+          // The planner the other coordinators use, from the same flash; shared commands go round in turn.
+          const seen = visible(this.b);
+          const living = this.mine.filter((m) => unit(this.b, m).alive);
+          const plans = living.map((m) => plan(seen, m).cmds);
+          for (let i = 0; i < 4 && this.queue.length < this.slots; i++)
+            living.forEach((m, k) => {
+              const c = plans[k]?.[i];
+              if (!c || this.queue.length >= this.slots) return;
+              this.aim(m);
+              this.push(c);
+            });
+          const said = this.queue.map((o) => `${two ? `${this.name(o.to)}: ` : ''}${CMD_LABEL[o.cmd]}`).join(' · ') || 'стоять';
+          this.done();
+          return `Команды: ${said}. Готово.`;
+        }
+        if (verb === 'order' && (ORDERS as readonly string[]).includes(rest ?? '')) {
+          if (arg) {
+            const want = arg.toLowerCase();
+            const who = this.mine.find((m) => m === want || this.name(m).toLowerCase().startsWith(want));
+            if (!who) return `Нет такого ударника: ${arg}.`;
+            this.aim(who);
+          }
+          const before = this.queue.length;
+          this.push(rest as Cmd);
+          return this.queue.length > before ? `${two ? `${this.name(this.target)}: ` : ''}«${CMD_LABEL[rest as Cmd]}».` : 'Команда не поместилась: больше нельзя.';
+        }
+        if (verb === 'erase') return (this.erase(), 'Стёрто.');
+        if (verb === 'done') return (this.done(), 'Готово.');
+        if (verb === 'accept' || verb === 'decline') return (this.decide(verb === 'accept'), verb === 'accept' ? 'Удар — на себя.' : 'Пусть бьёт.');
+        return null;
+      },
+      busy: () => !this.destroyed && this.phase === 'exec',
+      waiting: () => this.phase === 'plan' || this.phase === 'orders' || this.phase === 'prompt',
+    });
   }
 
   // ---------- the battle ----------
@@ -783,6 +866,7 @@ export class CoordinatorStage implements BattleStage {
     if (this.destroyed) return;
     this.destroyed = true;
     this.offLayout();
+    this.offAgent();
     this.ctx.stage.app.ticker.remove(this.tick);
     window.removeEventListener('keydown', this.onKey);
     document.removeEventListener('visibilitychange', this.onVisible);

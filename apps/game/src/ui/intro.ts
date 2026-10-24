@@ -6,6 +6,7 @@ import type { Output, Settings } from '../core/settings.ts';
 import type { RegisterResponse } from '../net/api.ts';
 import { arrivedLine, pickStats } from '../net/stats.ts';
 import { h } from './dom.ts';
+import { openSettings } from './settings.ts';
 
 const OUTPUTS: { value: Output; label: string }[] = [
   { value: 'headphones', label: 'Наушники' },
@@ -27,9 +28,18 @@ export function showIntro(root: HTMLElement, settings: Settings, returning: bool
     const radios = OUTPUTS.map(({ value, label }) => {
       const input = h('input', { attrs: { type: 'radio', name: 'output', value, id: `output-${value}` } });
       input.checked = settings.output === value;
+      input.addEventListener('change', () => input.checked && (settings.output = value));
       return h('label', { class: 'seg-option', attrs: { for: `output-${value}` } }, input, h('span', { text: label }));
     });
     const button = h('button', { class: 'primary', text: returning ? 'Вернуться в строй' : 'Встать в строй', attrs: { type: 'button' } });
+    // Everything else — volumes, captions, large text, no flashes, no timer, the keys — before the first step.
+    const more = h('button', { class: 'ghost', text: 'Настройки', attrs: { type: 'button' } });
+    more.addEventListener('click', () => {
+      void openSettings(root, settings).then(() => {
+        for (const r of screen.querySelectorAll<HTMLInputElement>('input[name="output"]')) r.checked = r.value === settings.output;
+        more.focus();
+      });
+    });
     const screen = h(
       'section',
       { class: 'intro', attrs: { 'aria-labelledby': 'intro-title' } },
@@ -42,7 +52,7 @@ export function showIntro(root: HTMLElement, settings: Settings, returning: bool
         h('p', { class: 'warning' }, h('strong', { text: 'В игре: ' }), 'война, гибель, жестокое насилие, мотив самоубийства, мигающий свет.'),
         h('fieldset', { class: 'seg' }, h('legend', { text: 'Чем вы слушаете' }), ...radios),
         h('p', { class: 'note', text: 'В темноте звук — половина того, что вы знаете. Лучше всего в наушниках.' }),
-        button,
+        h('div', { class: 'intro-actions' }, button, more),
         h('p', { class: 'foot', text: 'Игра сохраняется в этом браузере. В общую книгу учёта уходит только счёт, без имён.' }),
       ),
     );
@@ -51,7 +61,9 @@ export function showIntro(root: HTMLElement, settings: Settings, returning: bool
     button.addEventListener('click', () => {
       const picked = screen.querySelector<HTMLInputElement>('input[name="output"]:checked')?.value as Output | undefined;
       screen.remove();
-      resolve({ ...settings, output: picked ?? settings.output });
+      // The same object: the settings panel and the stages keep changing and reading it.
+      settings.output = picked ?? settings.output;
+      resolve(settings);
     });
   });
 }

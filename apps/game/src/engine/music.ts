@@ -5,6 +5,7 @@
  * mutiny's, goes round without a seam). Under dialogue and letters it
  * ducks by 12 dB; stopping fades it out on a bar line, or cuts it with the tape recorder's «стоп» click.
  */
+import { AGENT } from '../agent/hooks.ts';
 import { TRACKS, type TrackId } from '../content/tracks.ts';
 import type { AudioEngine } from './audio.ts';
 import { renderTrack, type Rendered, type Synth } from './music/render.ts';
@@ -46,12 +47,15 @@ export class Music {
 
   /** Prepares a track's buffer in advance (a quiet moment, before the scene that needs it). */
   async prerender(id: TrackId): Promise<void> {
+    // An agent hears nothing (agent mode has no sound): no tracks are synthesized.
+    if (AGENT) return;
     await this.render(id, 0);
   }
 
   /** Renders (once, cached) and starts a track; resolves when it has started. */
   async play(id: TrackId, opts: { wear?: number; loop?: boolean } = {}): Promise<void> {
     const token = ++this.token;
+    if (AGENT) return;
     const wear = opts.wear ?? 0;
     const rendered = await this.render(id, wear);
     if (token !== this.token) return;

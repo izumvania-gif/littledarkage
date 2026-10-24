@@ -15,7 +15,9 @@ import { h, isTyping } from '../../ui/dom.ts';
 import { Carrier, CarrierTrio, HOLD } from './carrier.ts';
 import { DutyScene, finish, lamp, rgb, type Layers } from './scene.ts';
 import { SofaModel, type Action, type Order, type SofaEvent } from './sofaModel.ts';
+import { registerAgent } from '../../agent/hooks.ts';
 import type { DutyContext, DutyResult } from './types.ts';
+import { hintFor } from '../../engine/keys.ts';
 
 const FLOOR = 470;
 const STEP = 64;
@@ -125,6 +127,10 @@ class Sofa {
   /** Frame of the rocking after a drop (BOUNCE.length when still). */
   private bounce = BOUNCE.length;
   private readonly onKey = (e: KeyboardEvent) => this.key(e);
+  private readonly offAgent: () => void;
+  /** Agent mode: carry the sofa for the player, following the partner's end. */
+  private auto = false;
+  private autoAt = 0;
 
   constructor(ctx: DutyContext, partner: string, name?: string) {
     this.ctx = ctx;
@@ -146,8 +152,8 @@ class Sofa {
     this.scene.plate(
       'duty-keys',
       h('p', { class: 'who', text: 'Ты — левый край дивана.' }),
-      h('p', {}, h('kbd', { text: 'A' }), ' ', h('kbd', { text: 'D' }), ' или ', h('kbd', { text: '←' }), ' ', h('kbd', { text: '→' }), ' — шаг'),
-      h('p', {}, h('kbd', { text: 'W' }), ' или ', h('kbd', { text: '↑' }), ' — поднять, ', h('kbd', { text: 'S' }), ' или ', h('kbd', { text: '↓' }), ' — опустить'),
+      h('p', {}, h('kbd', { text: hintFor('KeyA') }), ' ', h('kbd', { text: hintFor('KeyD') }), ' или ', h('kbd', { text: '←' }), ' ', h('kbd', { text: '→' }), ' — шаг'),
+      h('p', {}, h('kbd', { text: hintFor('KeyW') }), ' или ', h('kbd', { text: '↑' }), ' — поднять, ', h('kbd', { text: hintFor('KeyS') }), ' или ', h('kbd', { text: '↓' }), ' — опустить'),
     );
     this.scene.onTick((dt) => this.handle(this.model.tick(dt)));
     this.scene.onFrame(() => this.animate());
@@ -155,6 +161,55 @@ class Sofa {
     window.addEventListener('keydown', this.onKey);
     // For the dev page's robot (stripped from the build).
     if (import.meta.env.DEV) Reflect.set(window, '__sofa', this.model);
+    this.offAgent = this.agent();
+  }
+
+  /** Agent mode (agent/hooks.ts): the order and both ends in words; steps as actions, or the whole carry. */
+  private agent(): () => void {
+    const m = this.model;
+    const what = (o: Order | null) => (!o ? 'нет' : o.kind === 'lift' ? 'поднять' : o.kind === 'lower' ? 'опустить' : o.to === 0 ? 'на место' : `${Math.abs(o.to)} ${Math.abs(o.to) === 1 ? 'шаг' : 'шага'} ${o.to < 0 ? 'влево' : 'вправо'} от места`);
+    const end = (step: number, up: boolean) => `${step === 0 ? 'на месте' : `${Math.abs(step)} ${step < 0 ? 'влево' : 'вправо'}`}, ${up ? 'поднят' : 'стоит на полу'}`;
+    const mine = () => {
+      const o = m.order;
+      return !o || (o.kind === 'lift' ? m.lp : o.kind === 'lower' ? !m.lp : m.p === o.to && m.lp);
+    };
+    const act = (a: Action) => this.handle(m.act(a));
+    return registerAgent({
+      name: 'Наряд: переставить диван',
+      describe: () => [`Приказ генерала: ${what(m.order)}.`, `Ваш левый край: ${end(m.p, m.lp)}. Правый край, ${this.name}: ${end(m.q, m.lq)}.`, 'Несут вдвоём: поднимать, шагать и опускать надо вместе с напарником, иначе диван перекосит или уронят.'],
+      actions: () =>
+        m.order && !this.auto
+          ? [
+              { id: 'lift', label: 'Поднять свой край' },
+              { id: 'lower', label: 'Опустить свой край' },
+              { id: 'left', label: 'Шаг влево' },
+              { id: 'right', label: 'Шаг вправо' },
+              { id: 'auto', label: 'Нести, как велит генерал, до конца наряда (подстраиваясь под напарника)' },
+            ]
+          : [],
+      perform: (id) => {
+        if (id === 'auto') return ((this.auto = true), 'Несёте диван вместе с напарником.');
+        if (id === 'lift' || id === 'lower' || id === 'left' || id === 'right') return (act(id), 'Сделано.');
+        return null;
+      },
+      busy: () => this.auto && m.order !== null,
+      waiting: () => !this.auto && m.order !== null && !mine(),
+      poll: () => {
+        if (!this.auto || !m.order || performance.now() < this.autoAt) return;
+        this.autoAt = performance.now() + 180;
+        // Follow the partner's end: up when he is up, a step his way; the order itself once he has done it.
+        const o = m.order;
+        if (m.lq !== m.lp) act(m.lq ? 'lift' : 'lower');
+        else if (m.q < m.p) act('left');
+        else if (m.q > m.p) act('right');
+        else if (!mine()) {
+          if (o.kind === 'lift') act('lift');
+          else if (o.kind === 'lower') act('lower');
+          else if (!m.lp) act('lift');
+          else act(o.to < m.p ? 'left' : 'right');
+        }
+      },
+    });
   }
 
   async run(): Promise<DutyResult> {
@@ -187,6 +242,7 @@ class Sofa {
 
   destroy(): void {
     window.removeEventListener('keydown', this.onKey);
+    this.offAgent();
     this.scene.destroy();
   }
 

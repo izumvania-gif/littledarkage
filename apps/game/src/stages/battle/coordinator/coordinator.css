@@ -351,6 +351,25 @@
   text-align: center;
 }
 
+.cs-pause p {
+  margin: 0 0 0.6em;
+}
+
+.cs-pause-btn {
+  font: inherit;
+  font-size: 0.8em;
+  padding: 0.3em 0.9em;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.cs-pause-btn:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
 .cs-pause {
   left: calc(600 * var(--u));
   top: calc(300 * var(--u));

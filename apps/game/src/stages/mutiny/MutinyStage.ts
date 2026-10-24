@@ -6,6 +6,7 @@
  * the player strike or lower his hands, retells the brawl as ROSTA windows, and puts the lights out.
  */
 import { Container, Graphics } from 'pixi.js';
+import { AGENT, pressKey, registerAgent } from '../../agent/hooks.ts';
 import { GENERAL_LINES, KILL_WORDS, MUTINY, WEAPONS, type WeaponKind } from '../../content/mutiny.ts';
 import { look } from '../../content/looks.ts';
 import { captionsOn } from '../../core/settings.ts';
@@ -14,6 +15,7 @@ import { POSTER, REF_H, REF_W } from '../../render/palette.ts';
 import { RedGlasses } from '../../render/redGlasses.ts';
 import type { Fit } from '../../render/stage.ts';
 import { h, isTyping } from '../../ui/dom.ts';
+import { openSettings } from '../../ui/settings.ts';
 import {
   alive,
   enterRoom,
@@ -119,6 +121,9 @@ class Mutiny {
   private shotLine = false;
   private done: ((how: 'final' | 'surrendered') => void) | null = null;
   private autopilot: ((b: Brawl) => Input | null) | null = null;
+  /** Agent mode: the autopilot fights for the player («fight»). */
+  private autoFight = false;
+  private readonly offAgent: () => void;
   private stale = true;
   private readonly timers: { at: number; done: () => void }[] = [];
   private readonly offLayout: () => void;
@@ -157,12 +162,11 @@ class Mutiny {
     window.addEventListener('contextmenu', this.onMenu);
     window.addEventListener('blur', this.onBlur);
     document.addEventListener('visibilitychange', this.onVisible);
-    // For the dev page's robot (stripped from the build).
     // For bots and the dev page (stripped from the build): the state, and an autopilot when __mutinyAuto is set.
-    if (import.meta.env.DEV) {
-      Reflect.set(window, '__mutiny', this.b);
-      void import('./autopilot.ts').then((m) => (this.autopilot = m.autopilot));
-    }
+    // Agent mode loads the autopilot too, for its «fight».
+    if (import.meta.env.DEV) Reflect.set(window, '__mutiny', this.b);
+    if (import.meta.env.DEV || AGENT) void import('./autopilot.ts').then((m) => (this.autopilot = m.autopilot));
+    this.offAgent = this.agent();
   }
 
   async run(): Promise<MutinyResult> {
@@ -187,6 +191,7 @@ class Mutiny {
   destroy(): void {
     if (this.dead) return;
     this.dead = true;
+    this.offAgent();
     this.offLayout();
     this.ctx.stage.app.ticker.remove(this.tick);
     window.removeEventListener('keydown', this.onKeyDown);
@@ -299,6 +304,10 @@ class Mutiny {
     const m = this.mouse && this.clockNow - this.mouse.at < 3 ? this.mouse : null;
     const out: Input = { mx, my, ax: m?.x ?? null, ay: m?.y ?? null, ...this.edges };
     this.edges = { attack: false, throw: false, use: false };
+    if (this.autoFight) {
+      const auto = this.autopilot?.(this.b);
+      if (auto) return auto;
+    }
     if (import.meta.env.DEV) {
       const drive = (Reflect.get(window, '__mutinyDrive') as ((b: Brawl) => Input | null) | undefined) ?? (Reflect.get(window, '__mutinyAuto') ? this.autopilot : null);
       const auto = drive?.(this.b);
@@ -719,6 +728,7 @@ class Mutiny {
         this.setPaused(false);
         this.showCard();
       }),
+      this.button('Настройки', '', () => void openSettings(this.ctx.ui, this.ctx.settings)),
       this.button('Встать в строй', '', () => this.confirmSurrender()),
     );
     this.overlayPlate = h('div', { class: 'mt-plate mt-pause', attrs: { role: 'dialog', 'aria-label': 'Пауза' } }, h('p', { class: 'big', text: 'ПАУЗА' }), buttons, h('p', { class: 'note', text: `«Встать в строй» — не поражение: бунт подавлен, и всё пойдёт обычным путём. ${fem ? 'Сама' : 'Сам'} решаешь.` }));
@@ -878,6 +888,97 @@ class Mutiny {
       bk.el.style.left = `calc(${x} * var(--u))`;
       bk.el.style.top = `calc(${y} * var(--u))`;
     }
+  }
+
+  // ---------- agent mode ----------
+
+  /** The brawl in words for an agent (agent/hooks.ts): «fight» hands it to the autopilot, the rest are the buttons. */
+  private agent(): () => void {
+    const asked = () => this.overlayPlate?.getAttribute('aria-label') === 'Ну? Бей.';
+    const next = () => !!this.hud.querySelector('.mt-next');
+    return registerAgent({
+      name: 'Бунт',
+      covers: '.mutiny',
+      describe: () => {
+        const b = this.b;
+        const p = player(b);
+        const foes = b.units.filter((u) => u.side === 'loyal' && alive(u)).length;
+        const allies = b.units.filter((u) => u.side === 'ally' && alive(u)).length;
+        const out = [`Бунт, вид сверху. Комната ${b.room + 1} из 3: ${room(b).name}. Любой удар убивает, и тебя тоже; комната начинается заново сразу.`];
+        if (this.card) out.push('На экране карточка управления; бой ждёт.');
+        else if (this.paused) out.push('Пауза.');
+        else if (b.phase === 'dead') out.push(`Ты убит${this.ctx.player.fem ? 'а' : ''} (понарошку). Смертей в этой комнате: ${b.deaths[b.room] ?? 0}.`);
+        else if (asked()) out.push('Генерал в углу кабинета: «Ну? Бей.» Ударить или опустить руки.');
+        else if (next()) out.push('Летопись бунта:', ...[...this.hud.querySelectorAll<HTMLElement>('.mt-chron')].map((el) => `  ${el.innerText.trim()}`));
+        else if (b.phase === 'fight') out.push(this.autoFight ? 'Дерётся автопилот.' : 'Идёт драка: решай.');
+        out.push(`В руках: ${WEAPONS[p.weapon].name}. Людей генерала на ногах: ${foes}, своих: ${allies}. Магнитофон ${b.tape ? 'играет' : 'молчит'}.`);
+        // Hints and the shouts on the edge of the frame.
+        for (const el of this.hud.querySelectorAll<HTMLElement>('.mt-hint, .mt-bark')) if (el.innerText.trim()) out.push(`«${el.innerText.trim()}»`);
+        return out;
+      },
+      actions: () => {
+        const b = this.b;
+        if (this.finished || this.dead) return [];
+        if (asked())
+          return [
+            { id: 'strike', label: 'Ударить (1)' },
+            { id: 'spare', label: 'Опустить руки (2)' },
+          ];
+        // After «Ну? Бей.» or «Встать в строй» the scene plays out on its own (the chronicle's Space is «continue»).
+        if (next() || !this.done) return [];
+        const out = [];
+        if (b.phase === 'dead') {
+          const o = offers(b);
+          out.push({ id: 'restart', label: 'Заново (R)' });
+          if (o.slow) out.push({ id: 'slow', label: 'Без спешки (B)' });
+          if (o.skip) out.push({ id: 'skip', label: 'Сразу в кабинет (K)' });
+        }
+        if (!this.autoFight) out.push({ id: 'fight', label: 'Драться (автопилот: магнитофон, люди генерала по одному, к двери и к генералу)' });
+        else out.push({ id: 'stop', label: 'Забрать управление у автопилота' });
+        out.push({ id: 'surrender', label: 'Встать в строй: бунт подавлен' });
+        return out;
+      },
+      perform: (id) => {
+        const b = this.b;
+        if (id === 'fight' || id === 'stop') {
+          this.autoFight = id === 'fight';
+          if (this.card) this.closeCard();
+          if (this.paused) this.setPaused(false);
+          if (this.autoFight && b.phase === 'dead') this.restart();
+          return this.autoFight ? 'Автопилот дерётся.' : 'Управление снова у тебя.';
+        }
+        if (id === 'restart' || id === 'slow' || id === 'skip') {
+          if (b.phase !== 'dead') return 'Сейчас не время.';
+          if (id === 'restart') this.restart();
+          else if (id === 'slow') this.slowDown();
+          else this.skip();
+          return 'Комната сначала.';
+        }
+        if (id === 'surrender') {
+          if (this.card) this.closeCard();
+          if (b.phase === 'dead') this.restart();
+          if (!this.paused) this.setPaused(true);
+          this.confirmSurrender();
+          this.overlayPlate?.querySelector<HTMLButtonElement>('button.red')?.click();
+          return 'Встал в строй.';
+        }
+        if (id === 'strike' || id === 'spare') {
+          if (!asked()) return 'Сейчас не время.';
+          pressKey(id === 'strike' ? 'Digit1' : 'Digit2');
+          return id === 'strike' ? 'Удар.' : 'Руки опущены.';
+        }
+        return null;
+      },
+      // The autopilot at work, the general talking, the lights going out: time runs on.
+      busy: () => !this.finished && !this.dead && ((this.autoFight && !this.paused && !!this.done) || (!this.done && !asked() && !next())),
+      waiting: () => !this.finished && !this.dead && (asked() || (!this.autoFight && !!this.done)),
+      poll: () => {
+        if (!this.autoFight || this.finished || this.dead) return;
+        if (this.card) this.closeCard();
+        // A fall: the room again at once, or the office after so many falls that the brawl offers it.
+        if (this.b.phase === 'dead' && this.overlayPlate) pressKey(offers(this.b).skip ? 'KeyK' : 'KeyR');
+      },
+    });
   }
 
   // ---------- the end ----------

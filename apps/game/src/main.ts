@@ -14,8 +14,11 @@ import { SPEECH } from './content/speech.ts';
 import { makeBattle } from './core/battle.ts';
 import { checkName } from './core/names.ts';
 import { fetchRegister, reportArrival } from './net/api.ts';
-import { loadSave, newRun, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
-import { loadSettings, saveSettings, type Settings } from './core/settings.ts';
+import { loadSave, newRun, setSaveReadOnly, writeSave, type Gender, type KeyValue, type RunState, type SaveFile } from './core/save.ts';
+import { loadSettings, onSettings, saveSettings, type Settings } from './core/settings.ts';
+import { retireRun } from './core/save.ts';
+import { installKeyRemap } from './engine/keys.ts';
+import { installPause } from './ui/pause.ts';
 import { AudioEngine } from './engine/audio.ts';
 import { buildLineup, type LineupScene } from './render/lineup.ts';
 import { MATTE, REF_H, REF_W } from './render/palette.ts';
@@ -31,7 +34,18 @@ import { runBattle } from './stages/battle/run.ts';
 import type { BattleContext } from './stages/battle/types.ts';
 import { debugPanel } from './ui/debug.ts';
 import { h, wait } from './ui/dom.ts';
+import { showTakenOver, waitToTakeOver } from './ui/tabNotice.ts';
+import { claimTab } from './core/tabs.ts';
 import { isPhone, showDesktopOnly, showIntro } from './ui/intro.ts';
+import { AgentBridge } from './agent/bridge.ts';
+import { fewTextureUnits } from './agent/gpu.ts';
+import { AGENT } from './agent/hooks.ts';
+import { installVirtualTime } from './agent/virtualTime.ts';
+
+// Agent mode (?agent): a virtual clock, so time moves only when the agent acts, and a seeded Math.random
+// (?seed=), so a run replays the same. Installed before anything is built.
+const agentTime = AGENT ? installVirtualTime(Number(new URLSearchParams(location.search).get('seed')) || 1) : null;
+if (AGENT) fewTextureUnits();
 
 /** Cut-out animation steps at 12 frames a second. */
 const FRAME_MS = 1000 / 12;
@@ -146,6 +160,8 @@ async function prologue(plate: CaptionPlate, scene: LineupScene, audio: AudioEng
 
   general.setPose('speak');
   const run = newRun(player.name, player.gender);
+  // Once, at the register: how the name goes on the triangles («Кому: …»).
+  run.dative = await plate.askDative(run.dative);
   const next: SaveFile = { ...save, run, memory: { ...save.memory, nextName: null } };
   writeSave(store, next);
   await plate.register(next.memory.names, entryLine(run), true);
@@ -226,26 +242,54 @@ async function main(): Promise<void> {
   const ui = document.getElementById('ui');
   const host = document.getElementById('stage');
   if (!ui || !host) return;
+  if (agentTime) Reflect.set(window, 'ldaAgent', new AgentBridge(agentTime, ui));
   if (isPhone()) {
     showDesktopOnly(ui);
     return;
   }
   const store = storage();
-  let settings = loadSettings(store);
+  // An agent cannot hear or time anything: no timers, no motion or flashes, every sound written out.
+  let settings = AGENT ? { ...loadSettings(store), reduceFlashes: true, noTimer: true, captions: true, keys: {} } : loadSettings(store);
   applySettings(settings);
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The player's own keys (settings → «Клавиши»), read at every press.
+  installKeyRemap(() => settings.keys);
+  const reduced = AGENT || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const params = new URLSearchParams(location.search);
   void navigator.storage?.persist?.().catch(() => undefined);
+  // One playing tab: a second one waits to take over, and the one taken from stops writing.
+  const tab = await claimTab(() => {
+    setSaveReadOnly(true);
+    showTakenOver(ui);
+  });
+  if (tab.busy) {
+    await waitToTakeOver(ui);
+    tab.take();
+  }
 
   const audio = new AudioEngine();
+  audio.setVolumes(settings.volume);
+  // The settings panel changes the object in place; what the page itself shows follows at once.
+  onSettings((s) => {
+    applySettings(s);
+    audio.setOutput(s.output);
+    audio.setVolumes(s.volume);
+  });
   const [stage] = await Promise.all([createStage(host), fontsReady()]);
+  // An agent reads words, not pixels: the picture is drawn when it looks (or takes a screenshot), not every frame.
+  const agent = Reflect.get(window, 'ldaAgent') as AgentBridge | undefined;
+  if (agent) {
+    stage.app.ticker.remove(stage.app.render, stage.app);
+    agent.draw = () => stage.app.render();
+  }
 
   // The firing range: one battle outside the story (?battle=training|b1|b2|b3).
   const range = params.get('battle');
   if (isBattleId(range)) {
     settings = await showIntro(ui, settings, false);
-    saveSettings(store, settings);
-    audio.unlock(settings.output);
+    if (!AGENT) {
+      saveSettings(store, settings);
+      audio.unlock(settings.output);
+    }
     await battleRange(stage, ui, audio, settings, reduced, range, params);
     return;
   }
@@ -286,8 +330,26 @@ async function main(): Promise<void> {
   let save = loadSave(store);
   // The shared register fills in on the first screen if the server answers; the game never waits for it.
   settings = await showIntro(ui, settings, save.run !== null, { data: fetchRegister(), veteran: save.memory.names.length > 0 });
-  saveSettings(store, settings);
-  audio.unlock(settings.output);
+  // In agent mode the page stays silent and leaves the player's own settings alone.
+  if (!AGENT) {
+    saveSettings(store, settings);
+    audio.unlock(settings.output);
+  }
+  // Esc or P in the story: continue, settings, start again from the lineup. Battles, letters, duties and the
+  // finale own Esc themselves: the pause opens only over the caption plate with nothing else open.
+  installPause({
+    ui,
+    settings: () => settings,
+    free: () => {
+      if (plate.el.hidden || ui.querySelector('[aria-modal="true"], .applause, .chapter-card, .naming')) return false;
+      const room = ui.querySelector<HTMLElement>('.bk');
+      return !room || !room.hidden;
+    },
+    restart: () => {
+      writeSave(store, retireRun(loadSave(store)));
+      location.reload();
+    },
+  });
   await lightsOn(stage, dark, audio, reduced);
 
   plate.el.hidden = false;

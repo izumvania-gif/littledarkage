@@ -11,8 +11,12 @@
  */
 import { perform, plan, takesBlow } from '../../core/ai.ts';
 import { beginTurn, CMD_LABEL, creepPhase, endTurn, phases, relative, smell, stepPhase, strike, unit, type Attack, type Battle, type Cmd, type Ev, type Unit } from '../../core/battle.ts';
-import { captionsOn } from '../../core/settings.ts';
+import { captionsOn, onSettings } from '../../core/settings.ts';
+import { hintFor } from '../../engine/keys.ts';
+import { openSettings } from '../../ui/settings.ts';
 import { say, said } from '../../core/voice.ts';
+import { scentLines } from '../../agent/describe.ts';
+import { pressKey, registerAgent } from '../../agent/hooks.ts';
 import { TUNING } from '../../content/battles.ts';
 import { nameOf, PLAYER_ID, SOLDIERS, soldier, wordsOf, type Signal } from '../../content/soldiers.ts';
 import { BattleSound, where, type Spot } from '../../engine/spatial.ts';
@@ -73,6 +77,8 @@ export class StrikerStage implements BattleStage {
   private readonly scene: StrikerScene;
   private readonly hud: StrikerHud;
   private readonly offLayout: () => void;
+  private readonly offSettings: () => void;
+  private readonly offAgent: () => void;
   private readonly b: Battle;
   /** The stage's own clock: stops while paused, so every timed decision waits too. */
   private time = 0;
@@ -82,6 +88,8 @@ export class StrikerStage implements BattleStage {
   private timers: Timer[] = [];
   private phase: Phase = 'intro';
   private queue: Cmd[] = [];
+  /** What the voice said this turn, as the player heard it (agent mode's «auto» does it). */
+  private heard: Cmd[] = [];
   private slots = 3;
   private execIndex = -1;
   private countdown: { from: number; to: number } | null = null;
@@ -106,12 +114,75 @@ export class StrikerStage implements BattleStage {
     ctx.stage.root.addChild(this.scene.view);
     this.hud = new StrikerHud(ctx.ui);
     this.hud.setCaptions(captionsOn(ctx.settings));
+    // Captions follow the settings panel too (C still toggles them for this battle).
+    this.offSettings = onSettings((s) => this.hud.setCaptions(captionsOn(s)));
     this.hud.done.addEventListener('click', this.onDone);
     this.offLayout = ctx.stage.onLayout((fit) => this.hud.layout(fit));
     const u = unit(this.b, PLAYER_ID);
     this.me = { x: u.x, y: u.y, dir: u.dir };
     window.addEventListener('keydown', this.onKey);
     ctx.stage.app.ticker.add(this.tick);
+    this.offAgent = this.agent();
+  }
+
+  /** Agent mode: the dark in words — smell, voices, the heart — and the keys as actions (agent/hooks.ts). */
+  private agent(): () => void {
+    const key: Partial<Record<Cmd, string>> = { step: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', turnL: 'KeyQ', turnR: 'KeyE', about: 'KeyX', stay: 'KeyZ', jump: 'Space', sniff: 'KeyF', cover: 'KeyG' };
+    const open = () => this.phase === 'listen' || this.phase === 'decide';
+    return registerAgent({
+      name: this.barracks ? 'Бой в темноте казармы: ударник без голоса' : this.solo ? 'Бой: ударник, один в темноте' : 'Бой: ударник с завязанными глазами',
+      covers: '.sk-root',
+      describe: () => {
+        const me = unit(this.b, PLAYER_ID);
+        const sharp = this.queue.includes('sniff');
+        return [
+          `${this.turnLabel(Math.max(1, this.b.turn))}. ${me.alive ? `Сердце: хитов ${me.hp} из 3.` : 'Сердце остановилось.'}${me.bag ? ' В руке мешок: «накрой» берёт тварь живой.' : ''}`,
+          open() ? `Ваши действия в этом ходу: ${this.queue.map((c) => CMD_LABEL[c]).join(' · ') || 'пока ничего'} (можно ${this.slots}). Всё — от вашего лица: «вперёд» — куда вы смотрите.` : this.phase === 'exec' ? 'Действия исполняются.' : '',
+          `Нос${sharp ? ' (после «нюхай» запах чёткий)' : ' (дымка: только сторона и сила; «нюхай» — чётко, но тратит действие)'}:`,
+          ...scentLines(me.alive ? smell(this.b, PLAYER_ID, TUNING.smellRange) : [], sharp).map((l) => `  ${l}`),
+          ...[['Голоса', '.sk-layer'], ['Звуки', '.sk-captions'], ['', '.sk-center']].map(([what, sel]) => {
+            const text = (this.ctx.ui.querySelector<HTMLElement>(`.sk-root ${sel}`)?.innerText ?? '').trim().replace(/\s*\n\s*/g, ' / ');
+            return text ? `${what ? `${what}: ` : ''}${text}` : '';
+          }),
+        ].filter(Boolean);
+      },
+      actions: () => {
+        const out = [];
+        if (this.skip) out.push({ id: 'continue', label: 'Дальше' });
+        if (open() && !this.paused) {
+          for (const [cmd, code] of Object.entries(key) as [Cmd, string][]) {
+            if (cmd === 'cover' && !unit(this.b, PLAYER_ID).bag) continue;
+            out.push({ id: `cmd:${cmd}`, label: `${CMD_LABEL[cmd]}${cmd === 'step' ? ' (дважды подряд — два шага)' : ''}`, code });
+          }
+          if (this.queue.length) out.push({ id: 'erase', label: 'Стереть последнее действие' });
+          out.push({ id: 'done', label: 'Готово: действовать' });
+          out.push({ id: 'auto', label: this.solo ? 'Действовать по запаху, как ударник без голоса, — и «готово»' : 'Сделать, как сказал голос, — и «готово»' });
+        }
+        return out.map(({ id, label }) => ({ id, label }));
+      },
+      perform: (id) => {
+        const [verb, rest] = id.split(':');
+        if (verb === 'cmd' && rest && key[rest as Cmd]) {
+          const before = this.queue.join();
+          pressKey(key[rest as Cmd]!);
+          return this.queue.join() !== before ? `«${CMD_LABEL[rest as Cmd]}». В очереди: ${this.queue.map((c) => CMD_LABEL[c]).join(' · ')}.` : 'Не вышло: действий больше нет.';
+        }
+        if (verb === 'erase') return (pressKey('Backspace'), 'Стёрто.');
+        if (verb === 'auto') {
+          if (!open()) return 'Сейчас не время.';
+          // As heard (a scared voice swaps sides), or alone by smell: the planner a striker without a voice uses.
+          const cmds = this.heard.length ? this.heard : this.solo ? plan(this.b, PLAYER_ID, { blind: TUNING.smellRange }).cmds : [];
+          for (const c of cmds) if (key[c]) pressKey(key[c]!);
+          const did = this.queue.map((c) => CMD_LABEL[c]).join(' · ') || 'стоять';
+          pressKey('Enter');
+          return `${did}. Готово.`;
+        }
+        if (verb === 'done') return (pressKey('Enter'), 'Готово.');
+        return null;
+      },
+      busy: () => !this.dead && (this.phase === 'listen' || this.phase === 'exec' || (this.phase === 'intro' && !this.skip)),
+      waiting: () => this.phase === 'decide' || !!this.skip,
+    });
   }
 
   // ---------- the clock ----------
@@ -143,6 +214,7 @@ export class StrikerStage implements BattleStage {
       this.ambience();
     }
     if (this.countdown) this.hud.setBar(Math.max(0, (this.countdown.to - this.time) / (this.countdown.to - this.countdown.from)));
+    this.scene.haze.sectors = this.ctx.settings.blindHints;
     this.scene.update(this.paused ? 0 : dt / 1000, this.ctx.reduced);
   };
 
@@ -232,10 +304,12 @@ export class StrikerStage implements BattleStage {
     const scared = memory.playerScared;
     let asked: Cmd[] = [];
     let line = '';
+    this.heard = [];
     if (partner) {
       const p = plan(b, PLAYER_ID);
       const meant = this.withSniff(p.cmds);
       asked = said(meant, words, scared);
+      this.heard = asked;
       line = say(meant, words, { scared });
       const list = (cmds: readonly Cmd[]) => cmds.map((c) => CMD_LABEL[c]).join(' · ') || '—';
       if (this.ctx.debug) this.hud.debug(`задумал: ${p.intent}\n  ${list(meant)}\nсказал:  ${list(asked)}${scared ? '\n(напуган: путает стороны)' : ''}\nдоверие: ${memory.trust}`);
@@ -416,6 +490,7 @@ export class StrikerStage implements BattleStage {
       this.sound.signal(s.signal, spot);
       this.hud.caption(`${this.nameOf(id)}: ${SIGNAL_WORD[s.signal]} — ${where(spot)}`);
     }
+    this.hud.blindHints = this.ctx.settings.blindHints;
     this.hud.line(id, text, spot, { name: this.nameOf(id), hand: s.hand, partner: opts.partner, whisper: opts.whisper, hint: opts.hint });
   }
 
@@ -647,7 +722,8 @@ export class StrikerStage implements BattleStage {
     if (e.code === 'KeyP') {
       e.preventDefault();
       this.paused = !this.paused;
-      this.hud.say(this.paused ? 'Пауза' : null, this.paused ? 'P — продолжить' : undefined);
+      if (this.paused) this.hud.say('Пауза', `${hintFor('KeyP')} — продолжить`, { label: 'Настройки', run: () => void openSettings(this.ctx.ui, this.ctx.settings) });
+      else this.hud.say(null);
       return;
     }
     if (this.paused) return;
@@ -702,7 +778,9 @@ export class StrikerStage implements BattleStage {
     this.dead = true;
     this.phase = 'done';
     window.removeEventListener('keydown', this.onKey);
+    this.offSettings();
     this.offLayout();
+    this.offAgent();
     this.ctx.stage.app.ticker.remove(this.tick);
     for (const t of this.timers) t.done();
     this.timers = [];

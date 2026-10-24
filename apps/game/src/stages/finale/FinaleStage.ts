@@ -12,6 +12,7 @@
  */
 import './finale.css';
 import { Container, Graphics, type Ticker } from 'pixi.js';
+import { dative } from '../../core/names.ts';
 import { SPEECH, TYPE_CPS } from '../../content/speech.ts';
 import { MATTE, REF_H, REF_W } from '../../render/palette.ts';
 import { CaptionPlate, type Cue } from '../../ui/caption.ts';
@@ -150,7 +151,9 @@ class Finale {
   private async atDesk(): Promise<void> {
     const { ctx, plate } = this;
     const names = triangleNames(ctx.formerNames, ctx.player.name);
-    const desk = buildDesk(ctx.ui, { register: ctx.register, triangles: names, envelope: envelopeAddress(ctx.player.name, ctx.player.fem) });
+    // The triangles are addressed in the dative: the confirmed form for the current name, a guess for the old ones.
+    const to = names.map((n) => (n === ctx.player.name && ctx.dative ? ctx.dative : dative(n, ctx.player.fem)));
+    const desk = buildDesk(ctx.ui, { register: ctx.register, triangles: to, envelope: envelopeAddress(ctx.player.name, ctx.player.fem) });
     this.desk = desk;
     this.root.addChild(desk.view);
     desk.layout(ctx.stage.fit);

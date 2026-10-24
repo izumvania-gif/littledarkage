@@ -94,8 +94,8 @@ test('the book shows the last entries that fit on its page', () => {
 });
 
 test('the white envelope and its notice follow the player\'s gender', () => {
-  assert.equal(envelopeAddress('Сидоров', false), 'Семье рядового Сидоров');
-  assert.equal(envelopeAddress('Сидорова', true), 'Семье рядовой Сидорова');
+  assert.equal(envelopeAddress('Сидоров', false), 'Семье рядового Сидорова');
+  assert.equal(envelopeAddress('Сидорова', true), 'Семье рядовой Сидоровой');
   assert.match(noticeText('Сидоров', false), /Ваш сын, рядовой Сидоров, пал смертью храбрых/);
   assert.match(noticeText('Сидорова', true), /Ваша дочь, рядовая Сидорова, пала смертью храбрых/);
 });

@@ -19,6 +19,8 @@ import { ASSEMBLY, PART_FEEL, PART_NAMES, PEN_LIMIT, PEN_NORM, PenModel, penScor
 import { DutyScene, finish, FRAME, rgb, type Layers } from './scene.ts';
 import type { DutyContext, DutyResult } from './types.ts';
 import './pen/pen.css';
+import { registerAgent } from '../../agent/hooks.ts';
+import { hintFor } from '../../engine/keys.ts';
 
 /** The pen in the hand, lying across the cloth: its button end and its axis. */
 const PEN = { x: 320, y: 180 };
@@ -161,6 +163,9 @@ class Pen {
   private readonly held = new Set<string>();
   private readonly onKeyDown = (e: KeyboardEvent) => this.keyDown(e);
   private readonly onKeyUp = (e: KeyboardEvent) => this.held.delete(e.code);
+  private offAgent: () => void = () => undefined;
+  /** Agent mode: take the parts in order for the player. */
+  private auto = false;
   private readonly onPointer = (e: PointerEvent) => this.pointer(e);
   private readonly cursor: string;
 
@@ -209,7 +214,7 @@ class Pen {
     this.keysPlate = this.scene.plate(
       'duty-keys',
       h('p', { class: 'who', text: blind ? 'Ручка. Глаза завязаны.' : 'Ручка. Разобрать и собрать.' }),
-      h('p', {}, 'Мышь — рука, клик — взять. Или ', h('kbd', { text: '←' }), h('kbd', { text: '↑' }), h('kbd', { text: '↓' }), h('kbd', { text: '→' }), ' и ', h('kbd', { text: 'E' }), '.'),
+      h('p', {}, 'Мышь — рука, клик — взять. Или ', h('kbd', { text: '←' }), h('kbd', { text: '↑' }), h('kbd', { text: '↓' }), h('kbd', { text: '→' }), ' и ', h('kbd', { text: hintFor('KeyE') }), '.'),
       this.orderLine,
     );
     this.watch = this.scene.plate('duty-status', '00:00');
@@ -228,6 +233,44 @@ class Pen {
     window.addEventListener('pointerdown', this.onPointer);
     // For the dev page's robot (stripped from the build).
     if (import.meta.env.DEV) Reflect.set(window, '__pen', { model: this.model, aim: (p: PartId) => this.client(this.aim(p)), busy: () => this.busy || !this.working });
+    this.offAgent = this.agent();
+  }
+
+  /** Agent mode (agent/hooks.ts): where the parts are, what the fingers feel; taking a part as an action. */
+  private agent(): () => void {
+    const parts = Object.keys(PART_NAMES) as PartId[];
+    const at: Record<string, string> = { pen: 'в ручке', table: 'на столе', floor: 'на полу' };
+    const takeAt = (part: PartId) => {
+      const [x, y] = this.aim(part);
+      this.moveHand(x, y);
+      this.take();
+    };
+    return registerAgent({
+      name: this.blind ? 'Наряд: ручка, с завязанными глазами' : 'Наряд: разобрать и собрать ручку',
+      describe: () => [
+        `Сейчас: ${this.model.phase === 'apart' ? 'разбирать (с наконечника)' : this.model.phase === 'together' ? 'собирать (с кнопки)' : this.model.phase === 'check' ? 'щёлкнуть кнопкой — проверить' : 'готово'}. Ошибок: ${this.model.mistakes}.`,
+        this.blind ? `Пальцы: ${this.touchPlate.textContent || '—'}` : `Детали: ${parts.map((p) => `${PART_NAMES[p]} — ${at[this.model.where[p]] ?? this.model.where[p]}`).join('; ')}.`,
+      ],
+      actions: () =>
+        this.working && !this.auto
+          ? [...parts.map((p) => ({ id: `take:${p}`, label: `Взять: ${PART_NAMES[p]}` })), { id: 'auto', label: 'Разобрать и собрать по порядку до конца' }]
+          : [],
+      perform: (id) => {
+        if (id === 'auto') return ((this.auto = true), 'Разбираете и собираете по порядку.');
+        const part = id.startsWith('take:') ? (id.slice(5) as PartId) : null;
+        if (!part || !parts.includes(part)) return null;
+        if (!this.working) return 'Сейчас не время.';
+        takeAt(part);
+        return `Рука на детали: ${PART_NAMES[part]}.`;
+      },
+      busy: () => this.auto && this.working,
+      waiting: () => !this.auto && this.working && !this.busy,
+      poll: () => {
+        if (!this.auto || !this.working || this.busy) return;
+        const next = this.model.next();
+        if (next) takeAt(next);
+      },
+    });
   }
 
   async run(): Promise<DutyResult> {
@@ -273,6 +316,7 @@ class Pen {
   }
 
   destroy(): void {
+    this.offAgent();
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('pointermove', this.onPointer);

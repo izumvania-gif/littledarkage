@@ -3,9 +3,14 @@
  * under one master, so the settings map to bus volumes. The context starts only after the player's first
  * click (browsers block sound before that) and pauses while the tab is hidden.
  */
-import type { Output } from '../core/settings.ts';
+import type { Output, Settings } from '../core/settings.ts';
 
 const dbToGain = (db: number) => Math.pow(10, db / 20);
+
+/** The mix as made: master and bus levels in dB, before the player's volumes. */
+const LEVEL = { master: -4, sfx: -3, ui: -9, ambience: -14, music: -13 } as const;
+/** A slider's 0..1 as heard: squared, so the lower half is not all near silence. */
+const felt = (v: number) => v * v;
 
 export type Bus = 'sfx' | 'ui' | 'ambience' | 'music';
 
@@ -19,6 +24,7 @@ export class AudioEngine {
   private music!: GainNode;
   private white!: AudioBuffer;
   private mode: Output = 'headphones';
+  private vol: Settings['volume'] = { master: 1, music: 1, effects: 1 };
 
   get running(): boolean {
     return this.ctx?.state === 'running';
@@ -55,7 +61,6 @@ export class AudioEngine {
     const ctx = new Ctx();
     this.ctx = ctx;
     this.master = ctx.createGain();
-    this.master.gain.value = dbToGain(-4);
     this.master.connect(ctx.destination);
     const bus = (db: number) => {
       const g = ctx.createGain();
@@ -63,17 +68,34 @@ export class AudioEngine {
       g.connect(this.master);
       return g;
     };
-    this.sfx = bus(-3);
-    this.ui = bus(-9);
-    this.ambience = bus(-14);
-    this.music = bus(-13);
+    this.sfx = bus(LEVEL.sfx);
+    this.ui = bus(LEVEL.ui);
+    this.ambience = bus(LEVEL.ambience);
+    this.music = bus(LEVEL.music);
     this.white = this.noise(1, false);
     this.setOutput(output);
+    this.setVolumes(this.vol, true);
     this.roomTone();
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) void ctx.suspend();
       else void ctx.resume();
     });
+  }
+
+  /** The player's volumes (settings): master, the band and the tape, and every effect. */
+  setVolumes(v: Settings['volume'], instant = false): void {
+    this.vol = { ...v };
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const set = (g: GainNode, db: number, k: number) => {
+      if (instant) g.gain.value = dbToGain(db) * felt(k);
+      else g.gain.setTargetAtTime(dbToGain(db) * felt(k), t, 0.03);
+    };
+    set(this.master, LEVEL.master, v.master);
+    set(this.music, LEVEL.music, v.music);
+    set(this.sfx, LEVEL.sfx, v.effects);
+    set(this.ui, LEVEL.ui, v.effects);
+    set(this.ambience, LEVEL.ambience, v.effects);
   }
 
   /** Mono folds everything down to one channel for one-ear or mono playback. */

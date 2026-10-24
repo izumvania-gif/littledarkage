@@ -17,6 +17,7 @@ import { Puppet, type Pose, type PuppetColors } from '../../render/puppet.ts';
 import { RedGlasses } from '../../render/redGlasses.ts';
 import type { Fit, Stage } from '../../render/stage.ts';
 import { h, isTyping } from '../../ui/dom.ts';
+import { hintFor } from '../../engine/keys.ts';
 
 export type Spot = string;
 export type Light = 'warm' | 'disco' | 'dark' | 'alarm';
@@ -106,7 +107,11 @@ export class BarracksStage {
   private readonly stage: Stage;
   private readonly ui: HTMLElement;
   private readonly reduced: boolean;
-  private readonly calm: boolean;
+  private readonly settings: Settings;
+  /** «Без вспышек» (or reduced motion): read live, so the settings panel takes effect at once. */
+  private get calm(): boolean {
+    return this.reduced || this.settings.reduceFlashes;
+  }
   private readonly view = new Container();
   private readonly room: Room;
   private readonly glasses: RedGlasses;
@@ -135,7 +140,7 @@ export class BarracksStage {
     this.stage = stage;
     this.ui = ui;
     this.reduced = reduced;
-    this.calm = reduced || settings.reduceFlashes;
+    this.settings = settings;
     this.room = buildRoom();
     this.glasses = new RedGlasses(stage.app.renderer, this.room.truth, this.room.poster, BARRACKS_HOLES, stage.app.renderer.resolution);
     this.view.addChild(this.glasses.view);
@@ -350,12 +355,12 @@ export class BarracksStage {
       const buttons = new Map<string, HTMLButtonElement>();
       const bar = h('nav', { class: 'bk-bar', attrs: { 'aria-label': 'Куда подойти' } });
       for (const spot of hotspots) {
-        const b = h('button', { class: 'bk-go', text: spot.label, attrs: { type: 'button' } });
+        const b = h('button', { class: 'bk-go', text: spot.label, attrs: { type: 'button', 'data-spot': spot.id } });
         b.addEventListener('click', () => void this.goTo(spot));
         buttons.set(spot.id, b);
         bar.append(b);
       }
-      bar.append(h('p', { class: 'bk-keys' }, h('kbd', { text: 'A' }), ' ', h('kbd', { text: 'D' }), ' — идти, ', h('kbd', { text: 'E' }), ' — подойти'));
+      bar.append(h('p', { class: 'bk-keys' }, h('kbd', { text: hintFor('KeyA') }), ' ', h('kbd', { text: hintFor('KeyD') }), ' — идти, ', h('kbd', { text: hintFor('KeyE') }), ' — подойти'));
       const hint = h('p', { class: 'bk-hint', attrs: { 'aria-live': 'polite' } });
       hint.hidden = true;
       this.box.append(bar, hint);
@@ -382,6 +387,8 @@ export class BarracksStage {
     const x = this.where(spot);
     if (x === null) return;
     r.auto = true;
+    // Walking there: the places wait (an agent's clock keeps running until the pick).
+    r.bar.setAttribute('aria-busy', 'true');
     this.held = 0;
     // Stop beside a person, on a place.
     const isPerson = !SPOTS[spot.at];
@@ -420,7 +427,7 @@ export class BarracksStage {
     }
     const me = this.figure(PLAYER_ID);
     r.hint.hidden = false;
-    r.hint.replaceChildren(h('kbd', { text: 'E' }), ` — ${near.label}`);
+    r.hint.replaceChildren(h('kbd', { text: hintFor('KeyE') }), ` — ${near.label}`);
     r.hint.style.left = `calc(${me.x} * var(--u))`;
     r.hint.style.top = `calc(${me.y - 130 * FIGURE_SCALE * me.size} * var(--u))`;
   }

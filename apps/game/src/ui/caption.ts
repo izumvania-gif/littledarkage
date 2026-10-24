@@ -3,7 +3,7 @@
  * The general's speech is typed into it; names are called out in it; the register is opened in it.
  * Text lives in the DOM, not the canvas, so it stays sharp, readable and scales with «крупный шрифт».
  */
-import { checkName, MAX_NAME, NAME_ERRORS } from '../core/names.ts';
+import { checkName, MAX_NAME, NAME_ERRORS, normalizeName } from '../core/names.ts';
 import type { Gender } from '../core/save.ts';
 import { PARAGRAPH_PAUSE, PAUSE_AFTER, TYPE_CPS } from '../content/speech.ts';
 import type { AudioEngine } from '../engine/audio.ts';
@@ -219,6 +219,40 @@ export class CaptionPlate {
         }
         const gender = (form.querySelector<HTMLInputElement>('input[name="gender"]:checked')?.value ?? 'm') as Gender;
         resolve({ name: check.name, gender });
+      });
+    });
+  }
+
+  /**
+   * How to write the player's name on a triangle («Кому: Петровой»): the guessed dative, to confirm or correct once
+   * (concept §10 «Склонение имени»). Resolves with the form to use.
+   */
+  askDative(suggested: string): Promise<string> {
+    return new Promise((resolve) => {
+      const input = h('input', { attrs: { id: 'name-dative', type: 'text', maxlength: String(MAX_NAME + 8), autocomplete: 'off', spellcheck: 'false', 'aria-describedby': 'dative-error' } });
+      input.value = suggested;
+      const error = h('p', { class: 'error', attrs: { id: 'dative-error', role: 'alert' } });
+      const form = h(
+        'form',
+        { class: 'naming', attrs: { novalidate: '' } },
+        h('label', { class: 'naming-label', text: 'Как подписать треугольник с вашими письмами?', attrs: { for: 'name-dative' } }),
+        h('div', { class: 'naming-row' }, h('span', { class: 'naming-prefix', text: 'Кому:' }), input, h('button', { class: 'primary', text: 'Так', attrs: { type: 'submit' } })),
+        error,
+      );
+      this.body.replaceChildren(form);
+      this.live.textContent = `Как подписать треугольник? Кому: ${suggested}`;
+      input.focus();
+      input.select();
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const value = normalizeName(input.value);
+        if (!value || value.length > MAX_NAME + 8 || !/^[\p{L}][\p{L}' -]*$/u.test(value)) {
+          error.textContent = NAME_ERRORS[value ? 'chars' : 'empty'];
+          this.audio.typeKey();
+          input.focus();
+          return;
+        }
+        resolve(value);
       });
     });
   }

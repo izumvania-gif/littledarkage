@@ -9,6 +9,7 @@ import { CMD_LABEL, type Cmd } from '../../../core/battle.ts';
 import type { Hand } from '../../../content/soldiers.ts';
 import type { Fit } from '../../../render/stage.ts';
 import { REF_H, REF_W } from '../../../render/palette.ts';
+import { hintFor } from '../../../engine/keys.ts';
 import { h } from '../../../ui/dom.ts';
 
 export type Phase = 'idle' | 'plan' | 'orders' | 'exec' | 'prompt';
@@ -37,6 +38,8 @@ export interface PanelHandlers {
   accept(take: boolean): void;
   /** The player picked whom the next commands are for (battle 3). */
   target(id: string): void;
+  /** «Настройки» on the pause plate. */
+  settings(): void;
 }
 
 export interface PanelNames {
@@ -113,23 +116,23 @@ export class CoordinatorPanel {
       tabRow.append(b);
     });
     const pad = h('div', { class: 'cs-pad' });
-    for (const [, key, cmd] of PAD) {
-      const b = keep(h('button', { attrs: { type: 'button' } }, h('kbd', { text: key }), h('span', { text: CMD_LABEL[cmd] })));
+    for (const [code, , cmd] of PAD) {
+      const b = keep(h('button', { attrs: { type: 'button' } }, h('kbd', { text: hintFor(code) }), h('span', { text: CMD_LABEL[cmd] })));
       if (cmd === 'jump') b.classList.add('wide');
       b.addEventListener('click', () => on.cmd(cmd));
       this.buttons.push(b);
       pad.append(b);
     }
-    this.eraseBtn = keep(h('button', { class: 'cs-erase', attrs: { type: 'button' } }, h('kbd', { text: 'Backspace' }), ' стереть'));
-    this.doneBtn = keep(h('button', { class: 'cs-done', attrs: { type: 'button' } }, h('kbd', { text: 'Enter' }), ' Готово'));
+    this.eraseBtn = keep(h('button', { class: 'cs-erase', attrs: { type: 'button' } }, h('kbd', { text: hintFor('Backspace') }), ' стереть'));
+    this.doneBtn = keep(h('button', { class: 'cs-done', attrs: { type: 'button' } }, h('kbd', { text: hintFor('Enter') }), ' Готово'));
     this.eraseBtn.addEventListener('click', () => on.erase());
     this.doneBtn.addEventListener('click', () => on.done());
     const panel = h('section', { class: 'cs-panel', attrs: { 'aria-label': 'Координатор' } }, this.turnEl, this.phaseEl, this.subEl, this.barEl, this.queueEl, tabRow, pad, h('div', { class: 'cs-row' }, this.eraseBtn, this.doneBtn));
 
     this.promptFill = h('i');
-    const acceptBtn = keep(h('button', { class: 'cs-take', attrs: { type: 'button' } }, 'Принять удар ', h('kbd', { text: 'Пробел' })));
+    const acceptBtn = keep(h('button', { class: 'cs-take', attrs: { type: 'button' } }, 'Принять удар ', h('kbd', { text: hintFor('Space') })));
     acceptBtn.addEventListener('click', () => on.accept(true));
-    this.declineBtn = keep(h('button', { class: 'cs-let', attrs: { type: 'button' } }, 'Не принимать ', h('kbd', { text: 'Enter' })));
+    this.declineBtn = keep(h('button', { class: 'cs-let', attrs: { type: 'button' } }, 'Не принимать ', h('kbd', { text: hintFor('Enter') })));
     this.declineBtn.addEventListener('click', () => on.accept(false));
     this.declineBtn.hidden = !untimed;
     const promptBar = h('div', { class: 'cs-bar' }, this.promptFill);
@@ -148,7 +151,9 @@ export class CoordinatorPanel {
     this.hintEl.hidden = true;
     this.noteEl = h('p', { class: 'cs-note', attrs: { 'aria-live': 'polite' } });
     this.noteEl.hidden = true;
-    this.pauseEl = h('p', { class: 'cs-pause' }, 'Пауза. ', h('kbd', { text: 'P' }), ' — дальше');
+    const settings = h('button', { class: 'cs-pause-btn', text: 'Настройки', attrs: { type: 'button' } });
+    settings.addEventListener('click', () => on.settings());
+    this.pauseEl = h('div', { class: 'cs-pause' }, h('p', {}, 'Пауза. ', h('kbd', { text: hintFor('KeyP') }), ' — дальше'), settings);
     this.pauseEl.hidden = true;
     this.debug = h('pre', { class: 'cs-debug' });
     this.debug.hidden = true;

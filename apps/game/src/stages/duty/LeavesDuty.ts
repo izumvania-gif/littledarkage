@@ -10,7 +10,8 @@ import { glowTexture } from '../../render/kit.ts';
 import { POSTER, TRUTH } from '../../render/palette.ts';
 import type { Hole } from '../../render/tears.ts';
 import { h, isTyping } from '../../ui/dom.ts';
-import { leavesScore, Shading, straightness, type Pt } from './leavesModel.ts';
+import { inside, leavesScore, Shading, straightness, type Pt } from './leavesModel.ts';
+import { registerAgent } from '../../agent/hooks.ts';
 import { DutyScene, finish, rgb, type Layers } from './scene.ts';
 import type { DutyContext, DutyResult } from './types.ts';
 
@@ -119,6 +120,7 @@ class Leaves {
   };
   private readonly onPointer = (e: PointerEvent) => this.pointer(e);
   private readonly onWheel = (e: WheelEvent) => this.wheel(e);
+  private readonly offAgent: () => void;
 
   constructor(ctx: DutyContext) {
     this.ctx = ctx;
@@ -174,6 +176,61 @@ class Leaves {
     ctx.stage.app.canvas.style.cursor = 'none';
     // For the dev page's robot (stripped from the build).
     if (import.meta.env.DEV) Reflect.set(window, '__leaves', this);
+    this.offAgent = this.agent();
+  }
+
+  /** Agent mode (agent/hooks.ts): the sheet in numbers; shading it, straightening it and «Готово» as actions. */
+  private agent(): () => void {
+    const pct = (v: number) => `${Math.round(v * 100)}%`;
+    return registerAgent({
+      name: 'Наряд: закрасить листок и уложить в ряд',
+      covers: '.duty-done',
+      describe: () =>
+        this.phase === 'shade'
+          ? [`Листок закрашен на ${pct(this.shading.coverage())}, за край ушло ${pct(this.shading.overrun())}. Генерал ждёт ровной штриховки без выхода за край.`]
+          : this.phase === 'lay'
+            ? [`Листок лежит в ряду: сдвинут на ${Math.round(this.dy)} и повёрнут на ${Math.round((this.angle * 180) / Math.PI)}°. Ровность ${pct(straightness(this.dy, this.angle))}.`]
+            : ['Генерал проверяет ряд линейкой.'],
+      actions: () =>
+        this.phase === 'shade'
+          ? [
+              { id: 'shade', label: 'Заштриховать листок ровно, не выходя за край' },
+              { id: 'done', label: 'Готово (как есть)' },
+            ]
+          : this.phase === 'lay'
+            ? [
+                { id: 'straighten', label: 'Выровнять листок в ряду' },
+                { id: 'done', label: 'Готово' },
+              ]
+            : [],
+      perform: (id) => {
+        if (id === 'shade' && this.phase === 'shade') return (this.autoShade(), `Закрашено на ${pct(this.shading.coverage())}.`);
+        if (id === 'straighten' && this.phase === 'lay') {
+          this.dy = 0;
+          this.angle = 0;
+          this.lay();
+          return 'Ровно.';
+        }
+        if (id === 'done') return (this.finishPhase(), 'Готово.');
+        return null;
+      },
+      waiting: () => this.phase === 'shade' || this.phase === 'lay',
+    });
+  }
+
+  /** Agent mode: row after row of pencil across the sheet, kept a lead's width inside its edge. */
+  private autoShade(): void {
+    const ok = (x: number, y: number) => inside(this.poly, x, y) && inside(this.poly, x - LEAD, y) && inside(this.poly, x + LEAD, y) && inside(this.poly, x, y - LEAD) && inside(this.poly, x, y + LEAD);
+    for (let y = -170; y <= 170; y += 6) {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let x = -180; x <= 180; x += 3) {
+        if (!ok(x, y)) continue;
+        lo = Math.min(lo, x);
+        hi = Math.max(hi, x);
+      }
+      if (lo < hi) this.stroke([BIG.x + lo, BIG.y + y], [BIG.x + hi, BIG.y + y]);
+    }
   }
 
   async run(): Promise<DutyResult> {
@@ -238,6 +295,7 @@ class Leaves {
   }
 
   destroy(): void {
+    this.offAgent();
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('pointerdown', this.onPointer);
